@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard • CIFCUFS STORE</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+body{background:#f4f7f4;color:#181f1a;font-family:Inter,system-ui,sans-serif}
+.panel{background:white;border:1px solid #d5e3d6;border-radius:18px}
+.btn{background:#2d5a3c;color:white;border-radius:11px;padding:10px 14px;font-weight:700}
+.btn:hover{background:#4a7c59}.muted{color:#637568}
+</style>
+</head>
+<body class="min-h-screen">
+<div id="login" class="min-h-screen grid place-items-center p-4">
+  <form id="loginForm" class="panel w-full max-w-md p-7 space-y-5 shadow-sm">
+    <div class="w-12 h-12 rounded-2xl bg-[#e6efe6] text-[#2d5a3c] grid place-items-center"><i data-lucide="shield-check"></i></div>
+    <div><p class="text-xs uppercase tracking-widest font-bold text-[#4a7c59]">CIFCUFS STORE</p><h1 class="text-2xl font-extrabold mt-1">Admin Login</h1><p class="muted text-sm mt-1">Masuk untuk mengelola pesanan dan penjualan.</p></div>
+    <label class="block text-sm font-semibold">Email Admin<input id="email" type="email" autocomplete="username" required class="mt-2 w-full border border-[#d5e3d6] rounded-xl p-3 outline-none focus:border-[#4a7c59]"></label>
+    <label class="block text-sm font-semibold">Password<input id="password" type="password" autocomplete="current-password" required class="mt-2 w-full border border-[#d5e3d6] rounded-xl p-3 outline-none focus:border-[#4a7c59]"></label>
+    <p id="loginError" class="text-sm text-red-600"></p>
+    <button class="btn w-full">Masuk ke Dashboard</button>
+    <p class="text-xs muted">Akses khusus admin. Jangan bagikan kredensial login.</p>
+  </form>
+</div>
+<div id="app" class="hidden min-h-screen">
+  <header class="bg-white border-b border-[#d5e3d6]">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+      <div><p class="text-xs uppercase tracking-widest font-bold text-[#4a7c59]">CIFCUFS STORE</p><h1 class="text-xl font-extrabold">Admin Dashboard</h1></div>
+      <div class="flex items-center gap-3"><span id="adminName" class="text-sm font-semibold hidden sm:block"></span><button id="logout" class="border border-[#d5e3d6] rounded-xl px-3 py-2 text-sm font-bold">Logout</button></div>
+    </div>
+  </header>
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div class="flex flex-wrap justify-between items-end gap-3"><div><h2 class="text-2xl font-extrabold">Ringkasan Penjualan</h2><p class="muted text-sm">Data transaksi yang tersimpan di server.</p></div><button id="refresh" class="btn">↻ Refresh Data</button></div>
+    <div id="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
+    <section class="panel p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-extrabold text-lg">Pesanan & Riwayat Penjualan</h3><p class="muted text-xs">Pesanan terbaru ditampilkan paling atas.</p></div>
+      <input id="search" placeholder="Cari nama / nomor pesanan / WhatsApp" class="border border-[#d5e3d6] rounded-xl px-3 py-2 text-sm w-full sm:w-72"></div>
+      <div class="overflow-x-auto"><table class="w-full text-sm min-w-[850px]"><thead class="text-left text-xs uppercase muted border-b"><tr><th class="py-3 pr-3">Tanggal</th><th class="pr-3">Customer</th><th class="pr-3">Pesanan</th><th class="pr-3">Total</th><th class="pr-3">Pembayaran</th><th class="pr-3">Status</th><th>Aksi</th></tr></thead><tbody id="orders"></tbody></table></div>
+      <p id="empty" class="hidden py-8 text-center muted text-sm">Belum ada transaksi. Hubungkan checkout website untuk mulai menerima pesanan.</p>
+    </section>
+    <p id="notice" class="text-sm muted"></p>
+  </main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let allOrders=[];
+const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});let data={};try{data=await r.json()}catch{}if(!r.ok)throw new Error(data.error||'Permintaan gagal');return data}
+function showApp(name){$('login').classList.add('hidden');$('app').classList.remove('hidden');$('adminName').textContent=name||'Admin';loadOrders()}
+function showLogin(){$('app').classList.add('hidden');$('login').classList.remove('hidden')}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginError').textContent='';try{const d=await api('/api/admin/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})});$('password').value='';showApp(d.admin.name)}catch(err){$('loginError').textContent=err.message}});
+$('logout').onclick=async()=>{try{await api('/api/admin/logout',{method:'POST',body:'{}'})}finally{showLogin()}};
+$('refresh').onclick=loadOrders;$('search').oninput=renderOrders;
+function renderStats(){
+ const total=allOrders.length,paid=allOrders.filter(o=>['Paid','In Progress','Revision','Completed'].includes(o.status));
+ const revenue=paid.reduce((s,o)=>s+(Number(o.totalAmount)||0),0);
+ const pending=allOrders.filter(o=>!['Completed','Cancelled'].includes(o.status)).length;
+ const completed=allOrders.filter(o=>o.status==='Completed').length;
+ const cards=[['Total Pesanan',total,'shopping-bag'],['Omzet Terkonfirmasi',money(revenue),'wallet'],['Perlu Diproses',pending,'clock'],['Pesanan Selesai',completed,'check-circle']];
+ $('stats').innerHTML=cards.map(([t,v,i])=>`<div class="panel p-4"><div class="flex justify-between muted text-xs font-bold"><span>${t}</span><i data-lucide="${i}" class="w-4 h-4"></i></div><p class="text-xl sm:text-2xl font-extrabold mt-3">${v}</p></div>`).join('');
+ if(window.lucide)lucide.createIcons();
+}
+function renderOrders(){
+ const q=$('search').value.toLowerCase();
+ const rows=allOrders.filter(o=>[o.customerName,o.customerWhatsapp,o.orderNumber].join(' ').toLowerCase().includes(q));
+ $('empty').classList.toggle('hidden',rows.length>0);
+ $('orders').innerHTML=rows.map(o=>`<tr class="border-b border-[#edf2ed] align-top"><td class="py-3 pr-3 whitespace-nowrap">${new Date(o.createdAt).toLocaleString('id-ID')}</td><td class="pr-3"><b>${esc(o.customerName)}</b><div class="text-xs muted">${esc(o.customerWhatsapp)}</div></td><td class="pr-3"><b>${esc(o.orderNumber)}</b><div class="text-xs muted">${(o.items||[]).map(i=>esc(i.productName)+' ×'+esc(i.quantity)).join('<br>')}</div></td><td class="pr-3 font-bold whitespace-nowrap">${money(o.totalAmount)}</td><td class="pr-3">${esc(o.paymentMethod||'-')} ${o.paymentProofImage?`<button class="text-[#2d5a3c] underline block text-xs" onclick="viewProof('${encodeURIComponent(o.id)}')">Lihat bukti</button>`:'<span class="muted text-xs">Belum ada</span>'}</td><td class="pr-3"><select class="border rounded-lg p-2 text-xs" onchange="changeStatus('${encodeURIComponent(o.id)}',this.value)">${['Pending','Waiting for Payment','Waiting for Verification','Paid','In Progress','Revision','Completed','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></td><td><button class="text-[#2d5a3c] underline text-xs" onclick="detail('${encodeURIComponent(o.id)}')">Detail</button></td></tr>`).join('');
+}
+async function loadOrders(){try{allOrders=await api('/api/admin/orders');renderStats();renderOrders();$('notice').textContent='Terakhir diperbarui: '+new Date().toLocaleTimeString('id-ID')}catch(e){$('notice').textContent=e.message;if(e.message.includes('login'))showLogin()}}
+async function changeStatus(id,status){try{await api('/api/admin/orders/'+decodeURIComponent(id),{method:'PATCH',body:JSON.stringify({status})});await loadOrders()}catch(e){alert(e.message)}}
+function viewProof(id){const o=allOrders.find(x=>x.id===decodeURIComponent(id));if(!o?.paymentProofImage)return;const w=window.open();if(w){w.document.write(`<img src="${o.paymentProofImage}" style="max-width:100%">`)}}
+function detail(id){const o=allOrders.find(x=>x.id===decodeURIComponent(id));if(!o)return;alert(`Pesanan: ${o.orderNumber}\nCustomer: ${o.customerName}\nWhatsApp: ${o.customerWhatsapp}\nCatatan: ${o.customerNotes||'-'}\nProduk:\n${(o.items||[]).map(i=>`${i.productName} / ${i.plan} / ${i.duration} x${i.quantity} = ${money(i.subtotal)}`).join('\n')}\nTotal: ${money(o.totalAmount)}`)}
+(async()=>{if(window.lucide)lucide.createIcons();try{const d=await api('/api/admin/me');showApp(d.admin.name)}catch{showLogin()}})();
+</script>
+</body></html>
