@@ -12,6 +12,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase Compat SDK (Firestore Realtime) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -557,75 +560,115 @@ function saveToStorage(key, value) {
       reviewRatingInput: 5
     };
 
+// =========================================================================
+    // KONEKSI REAL-TIME KE CLOUD FIRESTORE (FIREBASE)
     // =========================================================================
-    // KONEKSI KE DATABASE LOKAL (NODE.JS + DB.JSON)
-    // =========================================================================
-      const API_URL = '/api/orders';
-      const REVIEWS_API_URL = '/api/reviews';
+    const firebaseConfig = {
+      apiKey: "AIzaSyDYXyg2sk6Hj_CUZw7CyfZBAoKmaCIEUIs",
+      authDomain: "cifcufs-store.firebaseapp.com",
+      projectId: "cifcufs-store",
+      storageBucket: "cifcufs-store.firebasestorage.app",
+      messagingSenderId: "451211237552",
+      appId: "1:451211237552:web:63ff511f71db0fedb3c375",
+      measurementId: "G-3YB90CMS50"
+    };
 
-    async function fetchOrdersFromDB() {
-      try {
-        const res = await fetch(API_URL);
-        if (!res.ok) return;
-        const dbOrders = await res.json();
-        state.orders = dbOrders;
+    let firestoreDB = null;
+    try {
+      if (window.firebase) {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        firestoreDB = firebase.firestore();
+      }
+    } catch (err) {
+      console.error('Gagal inisialisasi Firebase:', err);
+    }
+
+    function initRealtimeFirestoreSync() {
+      if (!firestoreDB) return;
+
+      // 1. Sinkronisasi Real-Time Pesanan (Orders)
+      firestoreDB.collection('orders').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+        const cloudOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        state.orders = cloudOrders;
         saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
         if (state.activePage === 'orders' || state.activePage === 'admin') {
           renderApp();
         }
-      } catch (err) {
-        console.warn('Server CMD belum dijalankan, menggunakan localStorage:', err);
-      }
-    }
+      });
 
-    async function saveOrderToDB(orderObj) {
-      try {
-        await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderObj)
-        });
-      } catch (err) {
-        console.error('Gagal kirim order ke server CMD:', err);
-      }
-    }
-
-    async function updateOrderInDB(orderId, partialData) {
-      try {
-        await fetch(`${API_URL}/${encodeURIComponent(orderId)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(partialData)
-        });
-      } catch (err) {
-        console.error('Gagal update order di server CMD:', err);
-      }
-    }
-
-    async function fetchReviewsFromDB() {
-      try {
-        const res = await fetch(REVIEWS_API_URL);
-        if (!res.ok) return;
-        const dbReviews = await res.json();
-        state.reviews = dbReviews;
+      // 2. Sinkronisasi Real-Time Ulasan (Reviews)
+      firestoreDB.collection('reviews').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+        const cloudReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        state.reviews = cloudReviews;
         saveToStorage(STORAGE_KEYS.REVIEWS, state.reviews);
         if (state.activePage === 'home') {
           renderApp();
         }
+      });
+
+      // 3. Sinkronisasi Katalog Produk & Harga dari Admin
+      firestoreDB.collection('store_config').doc('catalog').onSnapshot((doc) => {
+        if (doc.exists && Array.isArray(doc.data().products)) {
+          state.products = doc.data().products;
+          saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+          if (['home', 'catalog', 'admin'].includes(state.activePage)) {
+            renderApp();
+          }
+        }
+      });
+
+      // 4. Sinkronisasi Pengaturan Toko & Rekening/QRIS
+      firestoreDB.collection('store_config').doc('settings').onSnapshot((doc) => {
+        if (doc.exists && doc.data().settings) {
+          state.settings = { ...state.settings, ...doc.data().settings };
+          saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+          renderApp();
+        }
+      });
+    }
+
+    async function saveOrderToDB(orderObj) {
+      if (!firestoreDB) return;
+      try {
+        await firestoreDB.collection('orders').doc(orderObj.id).set(orderObj);
       } catch (err) {
-        console.warn('Gagal memuat review dari server CMD:', err);
+        console.error('Gagal menyimpan pesanan ke Firebase:', err);
+      }
+    }
+
+    async function updateOrderInDB(orderId, partialData) {
+      if (!firestoreDB) return;
+      try {
+        await firestoreDB.collection('orders').doc(orderId).update(partialData);
+      } catch (err) {
+        console.error('Gagal update pesanan di Firebase:', err);
       }
     }
 
     async function saveReviewToDB(reviewObj) {
+      if (!firestoreDB) return;
       try {
-        await fetch(REVIEWS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reviewObj)
-        });
+        await firestoreDB.collection('reviews').doc(reviewObj.id).set(reviewObj);
       } catch (err) {
-        console.error('Gagal kirim review ke server CMD:', err);
+        console.error('Gagal menyimpan ulasan ke Firebase:', err);
+      }
+    }
+
+    async function syncCatalogToCloud() {
+      if (!firestoreDB) return;
+      try {
+        await firestoreDB.collection('store_config').doc('catalog').set({ products: state.products });
+      } catch (err) {
+        console.error('Gagal sinkronisasi katalog ke Firebase:', err);
+      }
+    }
+
+    async function syncSettingsToCloud() {
+      if (!firestoreDB) return;
+      try {
+        await firestoreDB.collection('store_config').doc('settings').set({ settings: state.settings });
+      } catch (err) {
+        console.error('Gagal sinkronisasi pengaturan ke Firebase:', err);
       }
     }
 
@@ -782,7 +825,7 @@ function saveToStorage(key, value) {
               ${cartCount > 0 ? `<span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-[#2d5a3c] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">${cartCount}</span>` : ''}
             </button>
 
-            <!-- ADMIN BUTTON -->
+          <!-- ADMIN BUTTON (HANYA MUNCUL JIKA SUDAH LOGIN ADMIN) -->
             ${state.adminAuth.isAuthenticated
               ? `<button onclick="navigateTo('admin')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
                   state.activePage === 'admin' ? 'bg-[#181f1a] text-white' : 'bg-[#4a7c59] text-white hover:bg-[#2d5a3c]'
@@ -791,10 +834,7 @@ function saveToStorage(key, value) {
                   <span class="hidden sm:inline">Admin Dashboard</span>
                   <span class="sm:hidden">Admin</span>
                 </button>`
-              : `<button onclick="openAdminLoginModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border border-[#2d5a3c] text-[#2d5a3c] hover:bg-[#2d5a3c] hover:text-white transition-all">
-                  <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                  <span>Login Admin</span>
-                </button>`
+              : ''
             }
 
             <!-- MOBILE MENU TOGGLE -->
@@ -2161,27 +2201,21 @@ function confirmOrderPayment(orderId) {
       showToast('Profil pelanggan berhasil diperbarui.');
     }
 
-    function openAdminLoginModal() {
+   function openAdminLoginModal() {
       document.getElementById('modal-root').innerHTML = `
         <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#181f1a] text-white flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <i data-lucide="shield-check" class="w-5 h-5 text-[#95d1a6]"></i>
-                <h3 class="font-extrabold text-base">Login Admin CIFCUFS STORE</h3>
+                <h3 class="font-extrabold text-base">Akses Khusus Admin</h3>
               </div>
               <button onclick="closeModal()" class="p-1.5 rounded-lg hover:bg-white/10"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <form onsubmit="submitAdminLogin(event)" class="p-6 space-y-4">
-              <div class="p-3.5 rounded-xl bg-[#e6efe6] border border-[#c6dec9] text-xs text-[#1e3827]">
-                <p class="font-bold">Kredensial Default Demo:</p>
-                <p class="mt-0.5">Email: <code class="font-bold">${escapeHtml(state.adminAuth.email)}</code></p>
-                <p>Password: <code class="font-bold">${escapeHtml(state.adminAuth.password)}</code></p>
-                <p class="text-[11px] mt-1 text-[#43574a]">Anda dapat mengubah email & password ini di menu 14. Pengaturan Website.</p>
-              </div>
               <div>
                 <label class="block text-xs font-bold mb-1">Email Admin</label>
-                <input id="adm-email" type="email" required value="${escapeHtml(state.adminAuth.email)}" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
+                <input id="adm-email" type="email" required placeholder="Masukkan email admin" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
               </div>
               <div>
                 <label class="block text-xs font-bold mb-1">Kata Sandi</label>
@@ -3354,6 +3388,7 @@ service cloud.firestore {
       fetchOrdersFromDB();
       fetchReviewsFromDB();
     });
+
   </script>
 </body>
 </html>
