@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CIFCUFS STORE </title>
+  <title>CIFCUFS STORE</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Inter & Plus Jakarta Sans -->
@@ -15,12 +15,12 @@
   <!-- Firebase Compat SDK (Firestore Realtime) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'sans-serif'],
             display: ['Plus Jakarta Sans', 'sans-serif'],
           },
           colors: {
@@ -83,21 +83,21 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm pointer-events-none"></div>
 
   <!-- ========================================================================
-       JAVASCRIPT ENGINE: GALEYN STORE (VANILLA JS + LOCALSTORAGE + FIREBASE READY)
+       JAVASCRIPT ENGINE: CIFCUFS STORE (VANILLA JS + LOCALSTORAGE + FIREBASE)
   ========================================================================= -->
   <script>
     // =========================================================================
     // 1. DATA KATALOG & KONFIGURASI DEFAULT (HARGA NULL = BELUM TERSEDIA)
     // =========================================================================
     const STORAGE_KEYS = {
-      CATEGORIES: 'galeyn_categories_v1',
-      PRODUCTS: 'galeyn_products_v1',
-      ORDERS: 'galeyn_orders_v1',
-      REVIEWS: 'galeyn_reviews_v1',
-      SETTINGS: 'galeyn_settings_v1',
-      CART: 'galeyn_cart_v1',
-      USER_PROFILE: 'galeyn_user_profile_v1',
-      ADMIN_AUTH: 'galeyn_admin_auth_v1'
+      CATEGORIES: 'cifcufs_categories_v1',
+      PRODUCTS: 'cifcufs_products_v1',
+      ORDERS: 'cifcufs_orders_v1',
+      REVIEWS: 'cifcufs_reviews_v1',
+      SETTINGS: 'cifcufs_settings_v1',
+      CART: 'cifcufs_cart_v1',
+      USER_PROFILE: 'cifcufs_user_profile_v1',
+      ADMIN_AUTH: 'cifcufs_admin_auth_v1'
     };
 
     const ORDER_STATUSES = [
@@ -414,7 +414,6 @@
       }
     ];
 
-    // Tambahkan Subkategori JASA EDIT & JASA TUGAS ke DEFAULT_PRODUCTS
     const JASA_EDIT_LIST = [
       { id: 'je-edit-ppt', name: 'Edit PPT', desc: 'Perbaikan layout, tipografi, transisi, dan visualisasi slide PowerPoint agar lebih profesional.', diff: 'Ringan - Menengah', est: '1 - 2 Hari' },
       { id: 'je-desain-ppt', name: 'Desain PPT', desc: 'Pembuatan desain slide presentasi kreatif dari materi mentah Anda.', diff: 'Menengah', est: '1 - 3 Hari' },
@@ -507,9 +506,9 @@
 
     const DEFAULT_ADMIN_AUTH = {
       isAuthenticated: false,
-      email: 'admin@galeynstore.id',
-      password: 'admin123',
-      adminName: 'Admin GALEYN',
+      email: 'admin@cifcufsstore.id',
+      password: '',
+      adminName: 'Admin CIFCUFS',
       adminAvatar: ''
     };
 
@@ -517,24 +516,24 @@
     // 2. STATE GLOBAL & PERSISTENSI LOCALSTORAGE
     // =========================================================================
     function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return JSON.parse(JSON.stringify(fallback));
-    return JSON.parse(raw);
-  } catch (e) {
-    return JSON.parse(JSON.stringify(fallback));
-  }
-}
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return JSON.parse(JSON.stringify(fallback));
+        return JSON.parse(raw);
+      } catch (e) {
+        return JSON.parse(JSON.stringify(fallback));
+      }
+    }
 
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.warn('Penyimpanan lokal penuh:', e);
-  }
-}
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn('Penyimpanan lokal penuh:', e);
+      }
+    }
 
-   const state = {
+    const state = {
       categories: loadFromStorage(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES),
       products: loadFromStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS),
       orders: loadFromStorage(STORAGE_KEYS.ORDERS, []),
@@ -560,7 +559,7 @@ function saveToStorage(key, value) {
       reviewRatingInput: 5
     };
 
-// =========================================================================
+    // =========================================================================
     // KONEKSI REAL-TIME KE CLOUD FIRESTORE (FIREBASE)
     // =========================================================================
     const firebaseConfig = {
@@ -586,7 +585,6 @@ function saveToStorage(key, value) {
     function initRealtimeFirestoreSync() {
       if (!firestoreDB) return;
 
-      // 1. Sinkronisasi Real-Time Pesanan (Orders)
       firestoreDB.collection('orders').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
         const cloudOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         state.orders = cloudOrders;
@@ -596,7 +594,6 @@ function saveToStorage(key, value) {
         }
       });
 
-      // 2. Sinkronisasi Real-Time Ulasan (Reviews)
       firestoreDB.collection('reviews').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
         const cloudReviews = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         state.reviews = cloudReviews;
@@ -606,7 +603,6 @@ function saveToStorage(key, value) {
         }
       });
 
-      // 3. Sinkronisasi Katalog Produk & Harga dari Admin
       firestoreDB.collection('store_config').doc('catalog').onSnapshot((doc) => {
         if (doc.exists && Array.isArray(doc.data().products)) {
           state.products = doc.data().products;
@@ -617,7 +613,6 @@ function saveToStorage(key, value) {
         }
       });
 
-      // 4. Sinkronisasi Pengaturan Toko & Rekening/QRIS
       firestoreDB.collection('store_config').doc('settings').onSnapshot((doc) => {
         if (doc.exists && doc.data().settings) {
           state.settings = { ...state.settings, ...doc.data().settings };
@@ -657,7 +652,10 @@ function saveToStorage(key, value) {
     async function syncCatalogToCloud() {
       if (!firestoreDB) return;
       try {
-        await firestoreDB.collection('store_config').doc('catalog').set({ products: state.products });
+        await firestoreDB.collection('store_config').doc('catalog').set({
+          products: state.products,
+          updatedAt: new Date().toISOString()
+        });
       } catch (err) {
         console.error('Gagal sinkronisasi katalog ke Firebase:', err);
       }
@@ -666,7 +664,10 @@ function saveToStorage(key, value) {
     async function syncSettingsToCloud() {
       if (!firestoreDB) return;
       try {
-        await firestoreDB.collection('store_config').doc('settings').set({ settings: state.settings });
+        await firestoreDB.collection('store_config').doc('settings').set({
+          settings: state.settings,
+          updatedAt: new Date().toISOString()
+        });
       } catch (err) {
         console.error('Gagal sinkronisasi pengaturan ke Firebase:', err);
       }
@@ -678,11 +679,11 @@ function saveToStorage(key, value) {
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
     }
 
     function formatRupiah(amount) {
@@ -747,10 +748,38 @@ function saveToStorage(key, value) {
       }, 3300);
     }
 
+    // Kompresi gambar otomatis agar muat di Firestore (<1MB) & localStorage
     function readImageFileAsDataUrl(file, callback) {
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => callback(reader.result);
+      reader.onload = (e) => {
+        if (!file.type.startsWith('image/')) {
+          callback(e.target.result);
+          return;
+        }
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 900;
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          callback(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => callback(e.target.result);
+        img.src = e.target.result;
+      };
       reader.readAsDataURL(file);
     }
 
@@ -781,11 +810,10 @@ function saveToStorage(key, value) {
 
       document.getElementById('main-navbar').innerHTML = `
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
-          <!-- LOGO -->
           <button onclick="navigateTo('home')" class="flex items-center gap-3 text-left group focus:outline-none">
             ${s.logoImage
               ? `<img src="${s.logoImage}" alt="${escapeHtml(s.storeName)}" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-[#d5e3d6]" />`
-              : `<div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#2d5a3c] to-[#4a7c59] text-white font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">G</div>`
+              : `<div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#2d5a3c] to-[#4a7c59] text-white font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">C</div>`
             }
             <div>
               <span class="block font-extrabold text-base sm:text-lg tracking-tight text-[#181f1a] leading-none">${escapeHtml(s.storeName)}</span>
@@ -793,7 +821,6 @@ function saveToStorage(key, value) {
             </div>
           </button>
 
-          <!-- DESKTOP NAV -->
           <nav class="hidden lg:flex items-center gap-1.5">
             ${navItems.map(n => `
               <button onclick="navigateTo('${n.id}')" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
@@ -806,9 +833,7 @@ function saveToStorage(key, value) {
             `).join('')}
           </nav>
 
-          <!-- RIGHT ACTIONS -->
           <div class="flex items-center gap-2 sm:gap-2.5">
-            <!-- PROFIL PELANGGAN -->
             <button onclick="openUserProfileModal()" title="Profil Pelanggan" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-[#d5e3d6] bg-[#f4f7f4] hover:bg-[#e6efe6] transition-colors">
               ${state.userProfile.avatar
                 ? `<img src="${state.userProfile.avatar}" alt="Avatar" class="w-7 h-7 rounded-full object-cover" />`
@@ -819,13 +844,11 @@ function saveToStorage(key, value) {
               </span>
             </button>
 
-            <!-- KERANJANG -->
             <button onclick="openCartDrawer()" aria-label="Keranjang Belanja" class="relative p-2.5 rounded-xl border border-[#d5e3d6] bg-white hover:bg-[#e6efe6] text-[#2d5a3c] transition-colors">
               <i data-lucide="shopping-bag" class="w-5 h-5"></i>
               ${cartCount > 0 ? `<span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-[#2d5a3c] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">${cartCount}</span>` : ''}
             </button>
 
-          <!-- ADMIN BUTTON (HANYA MUNCUL JIKA SUDAH LOGIN ADMIN) -->
             ${state.adminAuth.isAuthenticated
               ? `<button onclick="navigateTo('admin')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
                   state.activePage === 'admin' ? 'bg-[#181f1a] text-white' : 'bg-[#4a7c59] text-white hover:bg-[#2d5a3c]'
@@ -837,7 +860,6 @@ function saveToStorage(key, value) {
               : ''
             }
 
-            <!-- MOBILE MENU TOGGLE -->
             <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-xl text-[#181f1a] hover:bg-[#e6efe6]" aria-label="Menu">
               <i data-lucide="${state.mobileMenuOpen ? 'x' : 'menu'}" class="w-6 h-6"></i>
             </button>
@@ -857,7 +879,6 @@ function saveToStorage(key, value) {
         ` : ''}
       `;
 
-      // Footer
       const footerEl = document.getElementById('main-footer');
       if (state.activePage === 'admin') {
         footerEl.classList.add('hidden');
@@ -869,7 +890,7 @@ function saveToStorage(key, value) {
               <div class="flex items-center gap-3">
                 ${s.logoImage
                   ? `<img src="${s.logoImage}" alt="Logo" class="w-10 h-10 rounded-xl object-cover" />`
-                  : `<div class="w-10 h-10 rounded-xl bg-[#4a7c59] text-white font-extrabold flex items-center justify-center text-lg">G</div>`
+                  : `<div class="w-10 h-10 rounded-xl bg-[#4a7c59] text-white font-extrabold flex items-center justify-center text-lg">C</div>`
                 }
                 <div>
                   <h3 class="font-bold text-white text-lg">${escapeHtml(s.storeName)}</h3>
@@ -1075,7 +1096,7 @@ function saveToStorage(key, value) {
             </div>
           </section>
 
-          <!-- CUSTOMER REVIEWS (ASLI DARI PELANGGAN) -->
+          <!-- CUSTOMER REVIEWS -->
           <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
               <div>
@@ -1289,7 +1310,6 @@ function saveToStorage(key, value) {
               </div>
             </div>
 
-            <!-- TABS 6 KATEGORI -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-6 mt-6 border-t border-[#eef4ef]">
               <button onclick="navigateToCategory('all')" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 state.selectedCategorySlug === 'all' ? 'bg-[#2d5a3c] text-white' : 'bg-[#f4f7f4] text-[#43574a] hover:bg-[#e6efe6]'
@@ -1306,7 +1326,6 @@ function saveToStorage(key, value) {
               `).join('')}
             </div>
 
-            <!-- SUBKATEGORI JASA EDIT & JASA TUGAS -->
             ${state.selectedCategorySlug === 'jasa-edit-tugas' ? `
               <div class="mt-4 pt-4 border-t border-[#eef4ef] flex flex-wrap items-center gap-2">
                 <span class="text-xs font-bold text-[#43574a] mr-1">Subkategori:</span>
@@ -1320,7 +1339,6 @@ function saveToStorage(key, value) {
               </div>
             ` : ''}
 
-            <!-- BANNER KEBIJAKAN ETIKA -->
             ${state.selectedCategorySlug === 'social-media' ? `
               <div class="mt-4 p-4 rounded-2xl bg-[#e6efe6] border border-[#c6dec9] flex items-start gap-3 text-xs text-[#1e3827]">
                 <i data-lucide="shield-check" class="w-5 h-5 text-[#2d5a3c] shrink-0 mt-0.5"></i>
@@ -1350,7 +1368,6 @@ function saveToStorage(key, value) {
             </div>
           </div>
 
-          <!-- PRODUCT GRID -->
           ${filtered.length === 0 ? `
             <div class="bg-white border border-[#d5e3d6] rounded-3xl p-12 text-center space-y-3">
               <p class="text-lg font-bold text-[#181f1a]">Tidak ada produk yang cocok</p>
@@ -1466,7 +1483,6 @@ function saveToStorage(key, value) {
                 ` : ''}
               </div>
 
-              <!-- PILIH PLAN (JIKA BUKAN SINGLE OPTION MODE) -->
               ${!product.singleOptionMode && uniquePlans.length > 0 ? `
                 <div class="space-y-2">
                   <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">1. Pilih Tipe Paket / Plan</label>
@@ -1484,7 +1500,6 @@ function saveToStorage(key, value) {
                 </div>
               ` : ''}
 
-              <!-- PILIH DURASI / VARIASI -->
               <div class="space-y-2">
                 <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">
                   ${product.singleOptionMode ? 'Paket Tersedia' : '2. Pilih Durasi / Variasi'}
@@ -1508,7 +1523,6 @@ function saveToStorage(key, value) {
                 </div>
               </div>
 
-              <!-- BIAYA TAMBAHAN (CONTOH: YOUTUBE MUSIC HEAD +RP5.000) -->
               ${activeVariant && Number(activeVariant.extraFee) > 0 ? `
                 <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
                   <span>${escapeHtml(activeVariant.extraFeeNote || 'Biaya tambahan paket')}</span>
@@ -1516,7 +1530,6 @@ function saveToStorage(key, value) {
                 </div>
               ` : ''}
 
-              <!-- INPUT TARGET AKUN / VIDEO UNTUK SOCIAL MEDIA -->
               ${product.requiresTargetInput ? `
                 <div class="space-y-1.5">
                   <label class="block text-xs font-bold text-[#181f1a]">${escapeHtml(product.targetLabel || 'Username / Link Target')}</label>
@@ -1524,7 +1537,6 @@ function saveToStorage(key, value) {
                 </div>
               ` : ''}
 
-              <!-- FORM BRIEF PELANGGAN & UPLOAD REFERENSI UNTUK JASA EDIT / JASA TUGAS -->
               ${product.isService ? `
                 <div class="space-y-3.5 p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6]">
                   <h4 class="text-xs font-extrabold uppercase tracking-wider text-[#2d5a3c]">Form Brief Layanan & File Referensi</h4>
@@ -1549,7 +1561,6 @@ function saveToStorage(key, value) {
                 </div>
               ` : ''}
 
-              <!-- HARGA OTOMATIS & KUANTITAS -->
               <div class="p-4 rounded-2xl bg-[#e6efe6] border border-[#c6dec9] flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <span class="text-xs font-semibold text-[#43574a]">Total Harga Variasi</span>
@@ -1575,7 +1586,6 @@ function saveToStorage(key, value) {
                 ` : ''}
               </div>
 
-              <!-- TOMBOL TAMBAH KE KERANJANG (NONAKTIF JIKA HARGA BELUM TERSEDIA) -->
               ${!isPriceReady ? `
                 <div class="space-y-2.5">
                   <button type="button" disabled class="w-full py-3.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs sm:text-sm cursor-not-allowed">
@@ -1799,7 +1809,6 @@ function saveToStorage(key, value) {
         return;
       }
 
-      // Validasi ulang harga langsung dari state.products (mencegah manipulasi browser)
       const validatedItems = [];
       for (const item of state.cart) {
         const dbProd = state.products.find(p => p.id === item.productId && p.active);
@@ -1846,1549 +1855,3 @@ function saveToStorage(key, value) {
       }
 
       state.cart = [];
-      saveToStorage(STORAGE_KEYS.CART, state.cart);
-      closeModal();
-
-      state.activePaymentOrderId = orderNumber;
-      state.activePage = 'payment';
-      renderApp();
-      showToast(`Pesanan ${orderNumber} berhasil dibuat!`);
-    }
-
-    // =========================================================================
-    // 9. HALAMAN PEMBAYARAN & HALAMAN LACAK PESANAN
-    // =========================================================================
-    let tempPaymentMethod = null;
-    let tempProofDataUrl = '';
-
-    function renderPaymentPage() {
-      const order = state.orders.find(o => o.id === state.activePaymentOrderId) || state.orders[0];
-      if (!order) {
-        return `
-          <div class="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-            <p class="font-bold text-lg">Tidak ada invoice pembayaran aktif.</p>
-            <button onclick="navigateTo('orders')" class="px-5 py-2.5 rounded-xl bg-[#2d5a3c] text-white text-sm font-bold">Lihat Daftar Pesanan</button>
-          </div>
-        `;
-      }
-
-      const method = tempPaymentMethod || order.paymentMethod || 'QRIS';
-      const proof = tempProofDataUrl || order.paymentProofImage || '';
-      const payCfg = state.settings.payments?.[method] || {};
-      const s = state.settings;
-
-      return `
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 sm:p-8 shadow-2xs space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-[#eef4ef]">
-              <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Nomor Pesanan</span>
-                <h1 class="text-2xl font-extrabold text-[#181f1a] mt-0.5">${escapeHtml(order.orderNumber)}</h1>
-                <p class="text-xs text-[#4e6355]">Pemesan: <strong>${escapeHtml(order.customerName)}</strong> (${escapeHtml(order.customerWhatsapp)})</p>
-              </div>
-              <div class="text-right">
-                <span class="text-xs text-[#4e6355] block">Total Pembayaran</span>
-                <span class="text-2xl font-extrabold text-[#2d5a3c]">${formatRupiah(order.totalAmount)}</span>
-              </div>
-            </div>
-
-            <!-- PILIH METODE PEMBAYARAN -->
-            <div class="space-y-2.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Pilih Metode Pembayaran</label>
-              <div class="grid grid-cols-3 gap-3">
-                ${[
-                  { id: 'QRIS', icon: 'qr-code' },
-                  { id: 'DANA', icon: 'wallet' },
-                  { id: 'SeaBank', icon: 'building-2' }
-                ].map(m => `
-                  <button type="button" onclick="selectPaymentMethod('${m.id}')" class="p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 font-bold text-sm transition-all ${
-                    method === m.id ? 'border-[#2d5a3c] bg-[#e6efe6] text-[#2d5a3c] ring-1 ring-[#2d5a3c]' : 'border-[#d5e3d6] bg-white text-[#43574a]'
-                  }">
-                    <i data-lucide="${m.icon}" class="w-5 h-5"></i>
-                    <span>${m.id}</span>
-                  </button>
-                `).join('')}
-              </div>
-            </div>
-
-            <!-- INFORMASI REKENING / QRIS TANPA DATA FIKTIF -->
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm text-[#181f1a]">Informasi Pembayaran (${method})</h3>
-              ${method === 'QRIS' ? (
-                payCfg.qrisImage
-                  ? `<div class="text-center space-y-2">
-                      <img src="${payCfg.qrisImage}" alt="QRIS" class="max-h-64 mx-auto rounded-2xl border border-[#d5e3d6] bg-white p-2" />
-                      ${payCfg.merchantName ? `<p class="text-xs font-bold text-[#2d5a3c]">Merchant: ${escapeHtml(payCfg.merchantName)}</p>` : ''}
-                    </div>`
-                  : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                      Gambar QRIS belum diunggah oleh Admin di Pengaturan Pembayaran. Silakan pilih metode lain atau konfirmasi via WhatsApp <strong>${escapeHtml(s.whatsappNumber)}</strong>.
-                    </div>`
-              ) : (
-                payCfg.accountNumber
-                  ? `<div class="space-y-1">
-                      <p class="text-xs text-[#4e6355]">Nomor Tujuan ${method}:</p>
-                      <p class="text-xl font-extrabold text-[#181f1a] select-all">${escapeHtml(payCfg.accountNumber)}</p>
-                      ${payCfg.accountName ? `<p class="text-xs font-semibold text-[#2d5a3c]">Atas Nama: ${escapeHtml(payCfg.accountName)}</p>` : ''}
-                    </div>`
-                  : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                      Nomor rekening/akun ${method} belum diisi oleh Admin. Silakan hubungi WhatsApp resmi <strong>${escapeHtml(s.whatsappNumber)}</strong> untuk instruksi transfer.
-                    </div>`
-              )}
-            </div>
-
-            <!-- UPLOAD BUKTI TRANSFER -->
-            <div class="space-y-2.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Upload Bukti Transfer *</label>
-              <label class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-[#4a7c59] bg-[#f4f7f4] hover:bg-[#e6efe6] cursor-pointer transition-colors">
-                ${proof
-                  ? `<div class="text-center space-y-2">
-                      <img src="${proof}" alt="Bukti Transfer" class="max-h-48 mx-auto rounded-xl border border-[#d5e3d6]" />
-                      <span class="text-xs font-bold text-[#2d5a3c] block">Klik untuk mengganti gambar bukti</span>
-                    </div>`
-                  : `<div class="text-center space-y-1.5">
-                      <i data-lucide="upload" class="w-8 h-8 mx-auto text-[#4a7c59]"></i>
-                      <p class="text-sm font-bold text-[#181f1a]">Pilih atau Unggah Screenshot Bukti Pembayaran</p>
-                      <p class="text-xs text-[#4e6355]">Format JPG, PNG, atau WEBP</p>
-                    </div>`
-                }
-                <input type="file" accept="image/*" onchange="handlePaymentProofFile(this)" class="hidden" />
-              </label>
-            </div>
-
-            <div class="flex flex-col sm:flex-row gap-3 pt-2">
-              <button type="button" onclick="confirmOrderPayment('${order.id}')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
-                Konfirmasi Pembayaran
-              </button>
-              <button type="button" onclick="navigateTo('orders')" class="px-5 py-3.5 rounded-xl border border-[#d5e3d6] text-[#43574a] font-bold text-sm hover:bg-[#f4f7f4]">
-                Ke Halaman Pesanan
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function selectPaymentMethod(method) {
-      tempPaymentMethod = method;
-      renderApp();
-    }
-
-    function handlePaymentProofFile(input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        tempProofDataUrl = dataUrl;
-        renderApp();
-      });
-    }
-
-function confirmOrderPayment(orderId) {
-      const idx = state.orders.findIndex(o => o.id === orderId);
-      if (idx === -1) return;
-      const proof = tempProofDataUrl || state.orders[idx].paymentProofImage;
-      if (!proof) {
-        showToast('Silakan unggah bukti transfer terlebih dahulu.', 'error');
-        return;
-      }
-
-      state.orders[idx] = {
-        ...state.orders[idx],
-        paymentMethod: tempPaymentMethod || state.orders[idx].paymentMethod || 'QRIS',
-        paymentProofImage: proof,
-        status: 'Waiting for Verification',
-        updatedAt: new Date().toISOString()
-      };
-      saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
-      updateOrderInDB(orderId, {
-        paymentMethod: state.orders[idx].paymentMethod,
-        paymentProofImage: proof,
-        status: 'Waiting for Verification',
-        updatedAt: state.orders[idx].updatedAt
-      });
-
-      tempPaymentMethod = null;
-      tempProofDataUrl = '';
-      showToast('Bukti transfer terkirim! Status: Waiting for Verification.');
-      navigateTo('orders');
-    }
-
-    function renderOrdersPage() {
-      const s = state.settings;
-      const waClean = s.whatsappRaw || s.whatsappNumber.replace(/\D/g, '').replace(/^0/, '62');
-
-      const matched = state.orders.filter(o => {
-        const mNum = state.orderSearchNumber.trim()
-          ? o.orderNumber.toLowerCase().includes(state.orderSearchNumber.trim().toLowerCase())
-          : true;
-        const mWa = state.orderSearchWhatsapp.trim()
-          ? o.customerWhatsapp.replace(/\D/g, '').includes(state.orderSearchWhatsapp.replace(/\D/g, ''))
-          : true;
-        return mNum && mWa;
-      });
-
-      return `
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 sm:p-8 shadow-2xs space-y-5">
-            <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Pelacakan 8 Status Pesanan</span>
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">Cek Status Pesanan</h1>
-              <p class="text-xs sm:text-sm text-[#4e6355] mt-1">
-                Masukkan Nomor Pesanan (contoh: GS-2026XXXX) dan Nomor WhatsApp Anda untuk melacak status pesanan.
-              </p>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input type="text" value="${escapeHtml(state.orderSearchNumber)}" oninput="state.orderSearchNumber = this.value; renderApp();" placeholder="Cari Nomor Pesanan (GS-...)" class="px-4 py-3 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none" />
-              <input type="tel" value="${escapeHtml(state.orderSearchWhatsapp)}" oninput="state.orderSearchWhatsapp = this.value; renderApp();" placeholder="Cari Nomor WhatsApp" class="px-4 py-3 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none" />
-            </div>
-          </div>
-
-          ${matched.length === 0 ? `
-            <div class="bg-white border border-[#d5e3d6] rounded-3xl p-12 text-center space-y-2">
-              <p class="font-bold text-base text-[#181f1a]">Belum ada pesanan yang ditemukan</p>
-              <p class="text-xs text-[#4e6355]">Buat pesanan melalui katalog atau periksa kembali Nomor Pesanan & WhatsApp Anda.</p>
-            </div>
-          ` : `
-            <div class="space-y-4">
-              ${matched.map(o => `
-                <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 shadow-2xs space-y-4">
-                  <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#eef4ef]">
-                    <div>
-                      <span class="text-xs text-[#5e7365] block">${new Date(o.createdAt).toLocaleString('id-ID')}</span>
-                      <h3 class="text-lg font-extrabold text-[#181f1a]">${escapeHtml(o.orderNumber)}</h3>
-                      <p class="text-xs text-[#43574a]">Pemesan: <strong>${escapeHtml(o.customerName)}</strong> (${escapeHtml(o.customerWhatsapp)})</p>
-                    </div>
-                    <div class="flex flex-col items-end gap-1.5">
-                      <span class="px-3.5 py-1.5 rounded-full text-xs font-extrabold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
-                      <span class="text-base font-extrabold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</span>
-                    </div>
-                  </div>
-
-                  <div class="space-y-2">
-                    ${(o.items || []).map(it => `
-                      <div class="flex items-center justify-between text-xs bg-[#f4f7f4] px-3.5 py-2.5 rounded-xl">
-                        <span><strong>${escapeHtml(it.productName)}</strong> (${escapeHtml(it.plan)} • ${escapeHtml(it.duration)}) x${it.quantity}</span>
-                        <span class="font-bold text-[#2d5a3c]">${formatRupiah(it.subtotal)}</span>
-                      </div>
-                    `).join('')}
-                  </div>
-
-                  <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    ${o.status === 'Waiting for Payment' ? `
-                      <button onclick="openPaymentForOrder('${o.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">
-                        Bayar / Upload Bukti Transfer
-                      </button>
-                    ` : ''}
-                    <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin konfirmasi pesanan *${o.orderNumber}* atas nama *${o.customerName}*.`)}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#d5e3d6] hover:bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold ml-auto">
-                      <i data-lucide="phone" class="w-3.5 h-3.5"></i>
-                      <span>Hubungi Admin WhatsApp</span>
-                    </a>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          `}
-        </div>
-      `;
-    }
-
-    function renderAboutPage() {
-      const s = state.settings;
-      const waClean = s.whatsappRaw || s.whatsappNumber.replace(/\D/g, '').replace(/^0/, '62');
-      return `
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-8 sm:p-10 shadow-2xs space-y-6">
-            <span class="inline-block px-3.5 py-1 rounded-full bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold">Tentang Kami</span>
-            <h1 class="text-3xl font-extrabold text-[#181f1a]">${escapeHtml(s.storeName)} — ${escapeHtml(s.tagline)}</h1>
-            <p class="text-sm sm:text-base text-[#43574a] leading-relaxed">
-              <strong>${escapeHtml(s.storeName)}</strong> adalah platform e-commerce digital terpadu yang melayani kebutuhan aplikasi hiburan, musik, kecerdasan buatan (AI), perangkat lunak editing, promosi media sosial sesuai kebijakan platform, serta jasa desain & pendampingan akademik yang etis.
-            </p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6]">
-                <h3 class="font-bold text-sm text-[#181f1a]">Kebijakan Pertumbuhan Media Sosial</h3>
-                <p class="text-xs text-[#4e6355] mt-1.5 leading-relaxed">
-                  Seluruh layanan pertumbuhan TikTok dilakukan secara bertahap dan sesuai ketentuan platform tanpa menggunakan bot, akun palsu, atau fake engagement.
-                </p>
-              </div>
-              <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6]">
-                <h3 class="font-bold text-sm text-[#181f1a]">Integritas Akademik Jasa Tugas</h3>
-                <p class="text-xs text-[#4e6355] mt-1.5 leading-relaxed">
-                  Jasa Tugas ditujukan sebagai pendampingan belajar, konsultasi konsep, formatting, proofreading, dan visualisasi presentasi—bukan joki plagiarisme.
-                </p>
-              </div>
-            </div>
-            <div class="pt-2 flex flex-wrap gap-3">
-              <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Buka Katalog</button>
-              <a href="https://wa.me/${escapeHtml(waClean)}" target="_blank" rel="noreferrer" class="px-6 py-3 rounded-xl border border-[#2d5a3c] text-[#2d5a3c] font-bold text-sm hover:bg-[#e6efe6]">WhatsApp: ${escapeHtml(s.whatsappNumber)}</a>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    // =========================================================================
-    // 10. PROFIL PELANGGAN & LOGIN ADMIN MODALS
-    // =========================================================================
-    let tempProfileAvatar = '';
-
-    function openUserProfileModal() {
-      tempProfileAvatar = state.userProfile.avatar || '';
-      document.getElementById('modal-root').innerHTML = `
-        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
-            <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Profil Pelanggan</h3>
-              <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <form onsubmit="saveUserProfile(event)" class="p-6 space-y-4">
-              <div class="flex flex-col items-center gap-2">
-                <div class="relative">
-                  <div id="profile-avatar-preview">
-                    ${tempProfileAvatar
-                      ? `<img src="${tempProfileAvatar}" alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-[#e6efe6]" />`
-                      : `<div class="w-24 h-24 rounded-full bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center"><i data-lucide="user" class="w-10 h-10"></i></div>`
-                    }
-                  </div>
-                  <label class="absolute bottom-0 right-0 p-2 rounded-full bg-[#2d5a3c] text-white cursor-pointer hover:bg-[#4a7c59] shadow-md">
-                    <i data-lucide="camera" class="w-4 h-4"></i>
-                    <input type="file" accept="image/*" onchange="handleUserAvatarUpload(this)" class="hidden" />
-                  </label>
-                </div>
-                <span class="text-xs text-[#4e6355]">Unggah foto profil Anda</span>
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">Nama Lengkap</label>
-                <input id="prof-name" type="text" value="${escapeHtml(state.userProfile.name)}" placeholder="Nama Anda" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">Nomor WhatsApp</label>
-                <input id="prof-wa" type="tel" value="${escapeHtml(state.userProfile.whatsapp)}" placeholder="081234567890" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">Email (Untuk Invite Akun Premium)</label>
-                <input id="prof-email" type="email" value="${escapeHtml(state.userProfile.email)}" placeholder="nama@email.com" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
-              </div>
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Profil</button>
-            </form>
-          </div>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function handleUserAvatarUpload(input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        tempProfileAvatar = dataUrl;
-        const preview = document.getElementById('profile-avatar-preview');
-        if (preview) {
-          preview.innerHTML = `<img src="${dataUrl}" alt="Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-[#e6efe6]" />`;
-        }
-      });
-    }
-
-    function saveUserProfile(e) {
-      e.preventDefault();
-      state.userProfile = {
-        name: document.getElementById('prof-name').value.trim(),
-        whatsapp: document.getElementById('prof-wa').value.trim(),
-        email: document.getElementById('prof-email').value.trim(),
-        avatar: tempProfileAvatar
-      };
-      saveToStorage(STORAGE_KEYS.USER_PROFILE, state.userProfile);
-      closeModal();
-      renderTopAndNavbar();
-      showToast('Profil pelanggan berhasil diperbarui.');
-    }
-
-   function openAdminLoginModal() {
-      document.getElementById('modal-root').innerHTML = `
-        <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
-            <div class="px-6 py-4 bg-[#181f1a] text-white flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <i data-lucide="shield-check" class="w-5 h-5 text-[#95d1a6]"></i>
-                <h3 class="font-extrabold text-base">Akses Khusus Admin</h3>
-              </div>
-              <button onclick="closeModal()" class="p-1.5 rounded-lg hover:bg-white/10"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <form onsubmit="submitAdminLogin(event)" class="p-6 space-y-4">
-              <div>
-                <label class="block text-xs font-bold mb-1">Email Admin</label>
-                <input id="adm-email" type="email" required placeholder="Masukkan email admin" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
-              </div>
-              <div>
-                <label class="block text-xs font-bold mb-1">Kata Sandi</label>
-                <input id="adm-pass" type="password" required placeholder="Masukkan kata sandi admin" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
-              </div>
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Masuk ke Admin Dashboard</button>
-            </form>
-          </div>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function submitAdminLogin(e) {
-      e.preventDefault();
-      const email = document.getElementById('adm-email').value.trim();
-      const pass = document.getElementById('adm-pass').value;
-      if (email === state.adminAuth.email && pass === state.adminAuth.password) {
-        state.adminAuth.isAuthenticated = true;
-        saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-        closeModal();
-        navigateTo('admin');
-        showToast('Berhasil masuk ke Admin Dashboard!');
-      } else {
-        showToast('Email atau kata sandi admin salah.', 'error');
-      }
-    }
-
-    function logoutAdmin() {
-      state.adminAuth.isAuthenticated = false;
-      saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-      navigateTo('home');
-      showToast('Anda telah keluar dari Admin Dashboard.');
-    }
-
-    // =========================================================================
-    // 11. ADMIN DASHBOARD (14 MENU LENGKAP)
-    // =========================================================================
-    const ADMIN_MENUS = [
-      { id: 'summary', label: '1. Ringkasan Dashboard', icon: 'trending-up' },
-      { id: 'catalog-all', label: '2. Kelola Katalog', icon: 'layers' },
-      { id: 'cat-streaming', label: '3. Aplikasi Streaming', icon: 'play', catId: 'streaming' },
-      { id: 'cat-listening', label: '4. Listening', icon: 'music', catId: 'listening' },
-      { id: 'cat-ai', label: '5. Artificial Intelligence', icon: 'cpu', catId: 'ai' },
-      { id: 'cat-editing', label: '6. Editing', icon: 'scissors', catId: 'editing' },
-      { id: 'cat-social', label: '7. Social Media', icon: 'share-2', catId: 'social-media' },
-      { id: 'cat-jasa', label: '8. Jasa Edit & Jasa Tugas', icon: 'file-edit', catId: 'jasa-edit-tugas' },
-      { id: 'variants', label: '9. Kelola Variasi', icon: 'sliders' },
-      { id: 'prices', label: '10. Kelola Harga', icon: 'dollar-sign' },
-      { id: 'orders', label: '11. Kelola Pesanan', icon: 'package' },
-      { id: 'payments-verify', label: '12. Verifikasi Pembayaran', icon: 'check-circle-2' },
-      { id: 'payments-settings', label: '13. Pengaturan Pembayaran', icon: 'credit-card' },
-      { id: 'website-settings', label: '14. Pengaturan Website', icon: 'settings' }
-    ];
-
-    function renderAdminDashboard() {
-      if (!state.adminAuth.isAuthenticated) {
-        return `<div class="p-16 text-center"><button onclick="openAdminLoginModal()" class="px-6 py-3 rounded-xl bg-[#2d5a3c] text-white font-bold">Login Admin Terlebih Dahulu</button></div>`;
-      }
-
-      const activeMenu = ADMIN_MENUS.find(m => m.id === state.activeAdminMenu) || ADMIN_MENUS[0];
-
-      return `
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <!-- SIDEBAR 14 MENU -->
-            <aside class="lg:col-span-3 bg-white border border-[#d5e3d6] rounded-3xl p-4 shadow-2xs space-y-3">
-              <div class="p-3 rounded-2xl bg-[#181f1a] text-white flex items-center gap-3">
-                ${state.adminAuth.adminAvatar
-                  ? `<img src="${state.adminAuth.adminAvatar}" alt="Admin" class="w-10 h-10 rounded-full object-cover" />`
-                  : `<div class="w-10 h-10 rounded-full bg-[#4a7c59] flex items-center justify-center font-bold">A</div>`
-                }
-                <div class="min-w-0">
-                  <p class="font-bold text-xs truncate">${escapeHtml(state.adminAuth.adminName || 'Admin GALEYN')}</p>
-                  <p class="text-[11px] text-[#95d1a6] truncate">${escapeHtml(state.adminAuth.email)}</p>
-                </div>
-              </div>
-
-              <div class="space-y-1 max-h-[65vh] overflow-y-auto pr-1">
-                ${ADMIN_MENUS.map(m => `
-                  <button onclick="setAdminMenu('${m.id}')" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-left transition-all ${
-                    state.activeAdminMenu === m.id ? 'bg-[#2d5a3c] text-white' : 'text-[#43574a] hover:bg-[#e6efe6]'
-                  }">
-                    <i data-lucide="${m.icon}" class="w-4 h-4 shrink-0"></i>
-                    <span class="truncate">${m.label}</span>
-                  </button>
-                `).join('')}
-              </div>
-
-              <button onclick="logoutAdmin()" class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-red-200 text-[#d94e4e] hover:bg-red-50 text-xs font-bold">
-                <i data-lucide="log-out" class="w-4 h-4"></i>
-                <span>Keluar Admin</span>
-              </button>
-            </aside>
-
-            <!-- PANEL KONTEN ADMIN -->
-            <div class="lg:col-span-9 space-y-6">
-              ${renderAdminPanelContent(activeMenu)}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderAdminPanelContent(activeMenu) {
-      // 1. RINGKASAN DASHBOARD
-      if (activeMenu.id === 'summary') {
-        const paidStatuses = ['Paid', 'In Progress', 'Revision', 'Completed'];
-        const revenue = state.orders.filter(o => paidStatuses.includes(o.status)).reduce((s, o) => s + Number(o.totalAmount || 0), 0);
-        const kpis = [
-          { label: 'Total Produk', value: state.products.length },
-          { label: 'Total Kategori', value: state.categories.length },
-          { label: 'Total Pesanan', value: state.orders.length },
-          { label: 'Pesanan Pending', value: state.orders.filter(o => ['Pending', 'Waiting for Payment', 'Waiting for Verification'].includes(o.status)).length },
-          { label: 'Pesanan Dibayar', value: state.orders.filter(o => o.status === 'Paid').length },
-          { label: 'Pesanan Diproses', value: state.orders.filter(o => ['In Progress', 'Revision'].includes(o.status)).length },
-          { label: 'Pesanan Selesai', value: state.orders.filter(o => o.status === 'Completed').length },
-          { label: 'Pendapatan', value: revenue > 0 ? formatRupiah(revenue) : 'Rp 0' }
-        ];
-
-        return `
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            ${kpis.map(k => `
-              <div class="bg-white border border-[#d5e3d6] rounded-2xl p-4 shadow-2xs">
-                <span class="text-[11px] font-semibold text-[#4e6355]">${k.label}</span>
-                <p class="text-lg sm:text-xl font-extrabold text-[#181f1a] mt-1">${k.value}</p>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-4">
-            <div class="flex items-center justify-between">
-              <h3 class="font-extrabold text-base">Aktivitas Pesanan Terbaru</h3>
-              <button onclick="setAdminMenu('orders')" class="text-xs font-bold text-[#2d5a3c] underline">Kelola Pesanan</button>
-            </div>
-            ${state.orders.length === 0 ? `<p class="text-xs text-[#4e6355] py-6 text-center">Belum ada pesanan masuk.</p>` : `
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="border-b border-[#eef4ef] text-[#4e6355]">
-                      <th class="py-2.5">No. Pesanan</th>
-                      <th class="py-2.5">Pelanggan</th>
-                      <th class="py-2.5">Total</th>
-                      <th class="py-2.5">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-[#eef4ef]">
-                    ${state.orders.slice(0, 6).map(o => `
-                      <tr>
-                        <td class="py-3 font-bold">${escapeHtml(o.orderNumber)}</td>
-                        <td class="py-3">${escapeHtml(o.customerName)}</td>
-                        <td class="py-3 font-bold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</td>
-                        <td class="py-3"><span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `}
-          </div>
-        `;
-      }
-
-      // 2 - 8. KELOLA KATALOG & PER KATEGORI
-      if (activeMenu.id === 'catalog-all' || activeMenu.catId) {
-        const list = state.products
-          .filter(p => activeMenu.catId ? p.categoryId === activeMenu.catId : true)
-          .filter(p => p.name.toLowerCase().includes(state.adminCatalogSearch.toLowerCase()))
-          .sort((a, b) => (a.order || 99) - (b.order || 99));
-
-        return `
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">${escapeHtml(activeMenu.label)}</h2>
-                <p class="text-xs text-[#4e6355]">Tambah produk/jasa baru, ubah urutan, gambar, status aktif, atau hapus produk.</p>
-              </div>
-              <button onclick="openProductFormModal(null, '${activeMenu.catId || 'streaming'}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center gap-1.5">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span>Tambah Produk / Jasa</span>
-              </button>
-            </div>
-
-            <input type="text" value="${escapeHtml(state.adminCatalogSearch)}" oninput="state.adminCatalogSearch = this.value; renderApp();" placeholder="Cari produk di daftar ini..." class="w-full sm:w-80 px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-xs">
-                <thead>
-                  <tr class="border-b border-[#eef4ef] text-[#4e6355]">
-                    <th class="py-3">Urutan</th>
-                    <th class="py-3">Produk</th>
-                    <th class="py-3">Kategori</th>
-                    <th class="py-3">Variasi</th>
-                    <th class="py-3">Harga Mulai</th>
-                    <th class="py-3">Status</th>
-                    <th class="py-3 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-[#eef4ef]">
-                  ${list.map(p => {
-                    const cat = state.categories.find(c => c.id === p.categoryId);
-                    return `
-                      <tr class="hover:bg-[#f4f7f4]">
-                        <td class="py-3 font-bold">#${p.order || 1}</td>
-                        <td class="py-3">
-                          <div class="flex items-center gap-2.5">
-                            ${p.image
-                              ? `<img src="${p.image}" alt="" class="w-9 h-9 rounded-lg object-cover border border-[#d5e3d6]" />`
-                              : `<div class="w-9 h-9 rounded-lg bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center font-bold">${escapeHtml(p.name.charAt(0))}</div>`
-                            }
-                            <div>
-                              <p class="font-bold text-[#181f1a]">${escapeHtml(p.name)}</p>
-                              ${p.subcategory ? `<span class="text-[10px] text-[#4a7c59] font-bold">${escapeHtml(p.subcategory)}</span>` : ''}
-                            </div>
-                          </div>
-                        </td>
-                        <td class="py-3 text-[#4e6355]">${escapeHtml(cat?.name || '')}</td>
-                        <td class="py-3 font-semibold">${(p.variants || []).length} opsi</td>
-                        <td class="py-3 font-bold text-[#2d5a3c]">${formatRupiah(getProductStartingPrice(p))}</td>
-                        <td class="py-3">
-                          <button onclick="toggleAdminProductActive('${p.id}')" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${p.active ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'}">
-                            ${p.active ? 'Aktif' : 'Nonaktif'}
-                          </button>
-                        </td>
-                        <td class="py-3 text-right space-x-1 whitespace-nowrap">
-                          <button onclick="openProductFormModal('${p.id}')" class="p-2 rounded-lg bg-[#e6efe6] text-[#2d5a3c] hover:bg-[#d5e3d6]" title="Edit"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
-                          <button onclick="deleteAdminProduct('${p.id}')" class="p-2 rounded-lg bg-red-50 text-[#d94e4e] hover:bg-red-100" title="Hapus"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
-                        </td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        `;
-      }
-
-      // 9. KELOLA VARIASI
-      if (activeMenu.id === 'variants') {
-        const prod = state.products.find(p => p.id === state.adminVariantProductId) || state.products[0];
-        return `
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
-            <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">9. Kelola Variasi Produk</h2>
-              <p class="text-xs text-[#4e6355]">Tambah variasi paket/durasi baru, hapus variasi, atau ubah status stok ketersediaan.</p>
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5">Pilih Produk</label>
-              <select onchange="state.adminVariantProductId = this.value; renderApp();" class="w-full sm:w-96 px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-xs font-bold">
-                ${state.products.map(p => `<option value="${p.id}" ${p.id === prod?.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
-              </select>
-            </div>
-
-            <form onsubmit="addAdminVariant(event, '${prod?.id}')" class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input id="new-var-plan" type="text" required placeholder="Nama Plan / Paket (mis: 1P1U)" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-              <input id="new-var-dur" type="text" required placeholder="Durasi / Kuota (mis: 1 Bulan)" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-              <button type="submit" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span>Tambah Variasi</span>
-              </button>
-            </form>
-
-            <div class="space-y-2">
-              ${(prod?.variants || []).map(v => `
-                <div class="p-3.5 rounded-xl border border-[#d5e3d6] flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="text-xs font-extrabold text-[#181f1a]">${escapeHtml(v.plan)} — <span class="text-[#4a7c59]">${escapeHtml(v.duration)}</span></p>
-                    <p class="text-[11px] text-[#4e6355]">Harga aktif: <strong>${formatRupiah(getVariantEffectivePrice(v))}</strong></p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button onclick="toggleAdminVariantStock('${prod.id}', '${v.id}')" class="px-3 py-1 rounded-lg text-xs font-bold ${v.stock === 'Habis' ? 'bg-red-50 text-[#d94e4e]' : 'bg-[#e6efe6] text-[#2d5a3c]'}">
-                      Stok: ${escapeHtml(v.stock || 'Tersedia')}
-                    </button>
-                    <button onclick="deleteAdminVariant('${prod.id}', '${v.id}')" class="p-2 rounded-lg text-[#d94e4e] hover:bg-red-50">
-                      <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
-
-      // 10. KELOLA HARGA INDEPENDEN
-      if (activeMenu.id === 'prices') {
-        const prods = state.products.filter(p => state.adminPriceCatFilter === 'all' ? true : p.categoryId === state.adminPriceCatFilter);
-        return `
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">10. Kelola Harga Independen</h2>
-                <p class="text-xs text-[#4e6355]">Atur harga dasar, harga promo, dan biaya tambahan (seperti +Rp5.000 pada YouTube Music Head) untuk tiap variasi.</p>
-              </div>
-              <select onchange="state.adminPriceCatFilter = this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs font-bold">
-                <option value="all">Semua Kategori</option>
-                ${state.categories.map(c => `<option value="${c.id}" ${state.adminPriceCatFilter === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="space-y-6">
-              ${prods.map(p => `
-                <div class="border border-[#d5e3d6] rounded-2xl overflow-hidden">
-                  <div class="px-5 py-3.5 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-                    <div>
-                      <h3 class="font-extrabold text-sm text-[#181f1a]">${escapeHtml(p.name)}</h3>
-                      <span class="text-[11px] text-[#4a7c59] font-semibold">${escapeHtml(state.categories.find(c => c.id === p.categoryId)?.name || '')}</span>
-                    </div>
-                    <button onclick="saveAdminProductPrices('${p.id}')" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center gap-1.5">
-                      <i data-lucide="save" class="w-3.5 h-3.5"></i>
-                      <span>Simpan Harga</span>
-                    </button>
-                  </div>
-                  <div class="p-4 overflow-x-auto">
-                    <table class="w-full text-left text-xs">
-                      <thead>
-                        <tr class="text-[#4e6355] border-b border-[#eef4ef]">
-                          <th class="py-2">Paket / Plan</th>
-                          <th class="py-2">Durasi</th>
-                          <th class="py-2">Harga Dasar (Rp)</th>
-                          <th class="py-2">Harga Promo</th>
-                          <th class="py-2">Biaya Tambahan</th>
-                          <th class="py-2">Harga Tampil</th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-[#eef4ef]">
-                        ${(p.variants || []).map(v => `
-                          <tr>
-                            <td class="py-2.5 font-bold">${escapeHtml(v.plan)}</td>
-                            <td class="py-2.5">${escapeHtml(v.duration)}</td>
-                            <td class="py-2.5">
-                              <input id="price-base-${v.id}" type="number" min="0" value="${v.basePrice ?? ''}" placeholder="Kosong = belum tersedia" class="w-36 px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs" />
-                            </td>
-                            <td class="py-2.5">
-                              <input id="price-promo-${v.id}" type="number" min="0" value="${v.promoPrice ?? ''}" placeholder="Opsional" class="w-28 px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs" />
-                            </td>
-                            <td class="py-2.5">
-                              <input id="price-extra-${v.id}" type="number" min="0" value="${v.extraFee || 0}" class="w-24 px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs" />
-                            </td>
-                            <td class="py-2.5 font-extrabold text-[#2d5a3c]">${formatRupiah(getVariantEffectivePrice(v))}</td>
-                          </tr>
-                        `).join('')}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
-
-      // 11. KELOLA PESANAN
-      if (activeMenu.id === 'orders') {
-        return `
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
-            <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">11. Kelola Pesanan</h2>
-              <p class="text-xs text-[#4e6355]">Kelola status 8 tahap pesanan, periksa brief layanan, dan unduh file referensi pelanggan.</p>
-            </div>
-            ${state.orders.length === 0 ? `<p class="text-xs text-[#4e6355] py-10 text-center">Belum ada pesanan masuk.</p>` : `
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="border-b border-[#eef4ef] text-[#4e6355]">
-                      <th class="py-3">No. Pesanan</th>
-                      <th class="py-3">Pelanggan</th>
-                      <th class="py-3">Total</th>
-                      <th class="py-3">Ubah Status</th>
-                      <th class="py-3 text-right">Detail</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-[#eef4ef]">
-                    ${state.orders.map(o => `
-                      <tr>
-                        <td class="py-3.5 font-bold">${escapeHtml(o.orderNumber)}</td>
-                        <td class="py-3.5">
-                          <p class="font-bold">${escapeHtml(o.customerName)}</p>
-                          <p class="text-[11px] text-[#4e6355]">${escapeHtml(o.customerWhatsapp)}</p>
-                        </td>
-                        <td class="py-3.5 font-extrabold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</td>
-                        <td class="py-3.5">
-                          <select onchange="updateAdminOrderStatus('${o.id}', this.value)" class="px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs font-bold bg-[#f4f7f4]">
-                            ${ORDER_STATUSES.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('')}
-                          </select>
-                        </td>
-                        <td class="py-3.5 text-right">
-                          <button onclick="openOrderInspectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-bold">Lihat Detail</button>
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            `}
-          </div>
-        `;
-      }
-
-      // 12. VERIFIKASI PEMBAYARAN
-      if (activeMenu.id === 'payments-verify') {
-        const list = state.orders.filter(o => o.status === 'Waiting for Verification' || o.paymentProofImage);
-        return `
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
-            <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">12. Verifikasi Pembayaran</h2>
-              <p class="text-xs text-[#4e6355]">Validasi bukti transfer pelanggan sebelum mengubah status menjadi Paid.</p>
-            </div>
-            ${list.length === 0 ? `<p class="text-xs text-[#4e6355] py-10 text-center">Belum ada bukti pembayaran untuk diverifikasi.</p>` : `
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                ${list.map(o => `
-                  <div class="border border-[#d5e3d6] rounded-2xl p-5 space-y-3.5 bg-[#f4f7f4]">
-                    <div class="flex items-start justify-between">
-                      <div>
-                        <span class="text-xs font-extrabold text-[#2d5a3c]">${escapeHtml(o.orderNumber)}</span>
-                        <h4 class="font-bold text-sm">${escapeHtml(o.customerName)}</h4>
-                        <p class="text-xs text-[#4e6355]">Metode: ${escapeHtml(o.paymentMethod || '-')}</p>
-                      </div>
-                      <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
-                    </div>
-                    <p class="text-base font-extrabold">${formatRupiah(o.totalAmount)}</p>
-                    ${o.paymentProofImage ? `<img src="${o.paymentProofImage}" alt="Bukti" class="w-full max-h-52 object-contain rounded-xl border border-[#d5e3d6] bg-white p-2" />` : ''}
-                    <div class="flex gap-2">
-                      <button onclick="updateAdminOrderStatus('${o.id}', 'Paid')" class="flex-1 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">Setujui (Paid)</button>
-                      <button onclick="updateAdminOrderStatus('${o.id}', 'Waiting for Payment')" class="px-4 py-2.5 rounded-xl bg-red-50 text-[#d94e4e] hover:bg-red-100 text-xs font-bold">Tolak</button>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `}
-          </div>
-        `;
-      }
-
-      // 13. PENGATURAN PEMBAYARAN
-      if (activeMenu.id === 'payments-settings') {
-        const pay = state.settings.payments || {};
-        return `
-          <form onsubmit="saveAdminPaymentSettings(event)" class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
-            <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">13. Pengaturan Pembayaran</h2>
-              <p class="text-xs text-[#4e6355]">Isi informasi QRIS, akun DANA, dan rekening SeaBank asli milik Anda (tanpa data fiktif).</p>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm">1. QRIS</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                <div class="space-y-2">
-                  <label class="block text-xs font-semibold">Nama Merchant QRIS</label>
-                  <input id="set-qris-name" type="text" value="${escapeHtml(pay.QRIS?.merchantName || '')}" placeholder="Nama Merchant QRIS" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                  <label class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2d5a3c] text-white text-xs font-bold cursor-pointer">
-                    <i data-lucide="upload" class="w-4 h-4"></i>
-                    <span>Unggah Gambar QRIS</span>
-                    <input type="file" accept="image/*" onchange="handleAdminQrisUpload(this)" class="hidden" />
-                  </label>
-                </div>
-                ${pay.QRIS?.qrisImage ? `<img src="${pay.QRIS.qrisImage}" alt="QRIS" class="max-h-40 rounded-xl border border-[#d5e3d6] bg-white p-2" />` : ''}
-              </div>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm">2. DANA</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-semibold mb-1">Nomor DANA</label>
-                  <input id="set-dana-num" type="text" value="${escapeHtml(pay.DANA?.accountNumber || '')}" placeholder="08xx-xxxx-xxxx" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold mb-1">Atas Nama Akun DANA</label>
-                  <input id="set-dana-name" type="text" value="${escapeHtml(pay.DANA?.accountName || '')}" placeholder="Nama Pemilik Akun" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                </div>
-              </div>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm">3. SeaBank</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-semibold mb-1">Nomor Rekening SeaBank</label>
-                  <input id="set-sea-num" type="text" value="${escapeHtml(pay.SeaBank?.accountNumber || '')}" placeholder="901xxxxxxxxx" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold mb-1">Atas Nama Rekening SeaBank</label>
-                  <input id="set-sea-name" type="text" value="${escapeHtml(pay.SeaBank?.accountName || '')}" placeholder="Nama Pemilik Rekening" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                </div>
-              </div>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm">4. Integrasi Payment Gateway & Webhook (Opsional)</h3>
-              <input id="set-webhook-url" type="url" value="${escapeHtml(pay.gatewayWebhookUrl || '')}" placeholder="https://api.domainanda.com/webhook/payment" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-            </div>
-
-            <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Pengaturan Pembayaran</button>
-          </form>
-        `;
-      }
-
-      // 14. PENGATURAN WEBSITE & FIREBASE
-      if (activeMenu.id === 'website-settings') {
-        const s = state.settings;
-        return `
-          <div class="space-y-6">
-            <form onsubmit="saveAdminWebsiteSettings(event)" class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
-              <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">14. Pengaturan Website & Profil Admin</h2>
-                <p class="text-xs text-[#4e6355]">Kelola logo toko, banner utama, foto profil admin, kontak WhatsApp, serta kredensial login admin.</p>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
-                  <p class="text-xs font-bold">Logo Toko</p>
-                  ${s.logoImage ? `<img src="${s.logoImage}" class="w-16 h-16 mx-auto rounded-xl object-cover" />` : `<div class="w-16 h-16 mx-auto rounded-xl bg-[#2d5a3c] text-white flex items-center justify-center font-bold text-xl">G</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
-                    Upload Logo
-                    <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('logoImage', this)" class="hidden" />
-                  </label>
-                </div>
-
-                <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
-                  <p class="text-xs font-bold">Banner Hero</p>
-                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Matcha</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
-                    Upload Banner
-                    <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('heroBannerImage', this)" class="hidden" />
-                  </label>
-                </div>
-
-                <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
-                  <p class="text-xs font-bold">Foto Profil Admin</p>
-                  ${state.adminAuth.adminAvatar ? `<img src="${state.adminAuth.adminAvatar}" class="w-16 h-16 mx-auto rounded-full object-cover" />` : `<div class="w-16 h-16 mx-auto rounded-full bg-[#4a7c59] text-white flex items-center justify-center font-bold text-xl">A</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
-                    Upload Foto Admin
-                    <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('adminAvatar', this)" class="hidden" />
-                  </label>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs font-bold mb-1">Nama Toko</label>
-                  <input id="web-name" type="text" value="${escapeHtml(s.storeName)}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Tagline</label>
-                  <input id="web-tag" type="text" value="${escapeHtml(s.tagline)}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Kontak WhatsApp</label>
-                  <input id="web-wa" type="text" value="${escapeHtml(s.whatsappNumber)}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Nama Tampilan Admin</label>
-                  <input id="web-adm-name" type="text" value="${escapeHtml(state.adminAuth.adminName || '')}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Email Login Admin</label>
-                  <input id="web-adm-email" type="email" value="${escapeHtml(state.adminAuth.email)}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Password Login Admin</label>
-                  <input id="web-adm-pass" type="text" value="${escapeHtml(state.adminAuth.password)}" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-              </div>
-
-              <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Pengaturan Website</button>
-            </form>
-
-            <!-- PANEL PANDUAN FIREBASE -->
-            <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-3 shadow-2xs">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Struktur Koleksi Cloud Firestore & Security Rules</h3>
-              <p class="text-xs text-[#4e6355] leading-relaxed">
-                Saat ini website berjalan menggunakan penyimpanan browser (<code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">localStorage</code>) agar langsung berfungsi tanpa perlu setup eksternal. Untuk menghubungkan ke proyek Firebase produksi Anda, gunakan struktur koleksi <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Categories</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Products</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">ProductVariants</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Orders</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Payments</code>, dan <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">StoreSettings</code> dengan aturan keamanan berikut:
-              </p>
-              <pre class="p-4 rounded-2xl bg-[#181f1a] text-[#95d1a6] text-[11px] overflow-x-auto leading-relaxed">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /Products/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /Orders/{docId} {
-      allow create, read: if true;
-      allow update, delete: if request.auth != null;
-    }
-    match /StoreSettings/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}</pre>
-            </div>
-          </div>
-        `;
-      }
-
-      return '';
-    }
-
-    // =========================================================================
-    // 12. AKSI ADMIN & MODAL FORM PRODUK / INSPEKSI ORDER
-    // =========================================================================
-    let tempProductImage = '';
-
-    function openProductFormModal(productId = null, defaultCatId = 'streaming') {
-      const existing = productId ? state.products.find(p => p.id === productId) : null;
-      const prod = existing || {
-        id: `prod-${Date.now()}`,
-        categoryId: defaultCatId,
-        subcategory: defaultCatId === 'jasa-edit-tugas' ? 'Jasa Edit' : '',
-        name: '',
-        description: '',
-        image: '',
-        active: true,
-        featured: false,
-        order: state.products.length + 1,
-        estimatedTime: '1 - 2 Hari',
-        difficulty: 'Menengah',
-        variants: [
-          { id: `var-${Date.now()}`, plan: 'Paket Reguler', duration: '1 Bulan', basePrice: null, promoPrice: null, extraFee: 0, stock: 'Tersedia' }
-        ]
-      };
-      tempProductImage = prod.image || '';
-
-      document.getElementById('modal-root').innerHTML = `
-        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in">
-            <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">${existing ? 'Edit Produk / Jasa' : 'Tambah Produk / Jasa Baru'}</h3>
-              <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <form onsubmit="saveAdminProductForm(event, '${prod.id}', ${Boolean(existing)})" class="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs font-bold mb-1">Kategori</label>
-                  <select id="pf-cat" class="w-full px-3 py-2 rounded-xl border border-[#d5e3d6] text-xs font-bold">
-                    ${state.categories.map(c => `<option value="${c.id}" ${prod.categoryId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-bold mb-1">Urutan Tampil</label>
-                  <input id="pf-order" type="number" min="1" value="${prod.order || 1}" class="w-full px-3 py-2 rounded-xl border border-[#d5e3d6] text-xs" />
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold mb-1">Subkategori (Khusus Jasa Edit & Jasa Tugas)</label>
-                <select id="pf-subcat" class="w-full px-3 py-2 rounded-xl border border-[#d5e3d6] text-xs">
-                  <option value="">-- Tidak Ada --</option>
-                  <option value="Jasa Edit" ${prod.subcategory === 'Jasa Edit' ? 'selected' : ''}>Jasa Edit</option>
-                  <option value="Jasa Tugas" ${prod.subcategory === 'Jasa Tugas' ? 'selected' : ''}>Jasa Tugas</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold mb-1">Nama Produk / Layanan *</label>
-                <input id="pf-name" type="text" required value="${escapeHtml(prod.name)}" placeholder="Nama produk..." class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-xs" />
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold mb-1">Deskripsi</label>
-                <textarea id="pf-desc" rows="3" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs">${escapeHtml(prod.description)}</textarea>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold mb-1">Gambar Produk</label>
-                <div class="flex items-center gap-3">
-                  <div id="pf-img-preview">
-                    ${tempProductImage ? `<img src="${tempProductImage}" class="w-14 h-14 rounded-xl object-cover border border-[#d5e3d6]" />` : ''}
-                  </div>
-                  <label class="px-4 py-2 rounded-xl bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5">
-                    <i data-lucide="image" class="w-4 h-4"></i>
-                    <span>Unggah Gambar Produk</span>
-                    <input type="file" accept="image/*" onchange="handleProductImageUpload(this)" class="hidden" />
-                  </label>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-4">
-                <label class="inline-flex items-center gap-2 text-xs font-semibold">
-                  <input id="pf-feat" type="checkbox" ${prod.featured ? 'checked' : ''} />
-                  <span>Produk Unggulan</span>
-                </label>
-                <label class="inline-flex items-center gap-2 text-xs font-semibold">
-                  <input id="pf-act" type="checkbox" ${prod.active !== false ? 'checked' : ''} />
-                  <span>Aktif di Katalog</span>
-                </label>
-              </div>
-
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Produk</button>
-            </form>
-          </div>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function handleProductImageUpload(input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        tempProductImage = dataUrl;
-        const box = document.getElementById('pf-img-preview');
-        if (box) box.innerHTML = `<img src="${dataUrl}" class="w-14 h-14 rounded-xl object-cover border border-[#d5e3d6]" />`;
-      });
-    }
-
-    function saveAdminProductForm(e, prodId, isEdit) {
-      e.preventDefault();
-      const catId = document.getElementById('pf-cat').value;
-      const orderVal = Number(document.getElementById('pf-order').value || 1);
-      const subcat = document.getElementById('pf-subcat').value;
-      const name = document.getElementById('pf-name').value.trim();
-      const desc = document.getElementById('pf-desc').value.trim();
-      const featured = document.getElementById('pf-feat').checked;
-      const active = document.getElementById('pf-act').checked;
-
-      if (isEdit) {
-        state.products = state.products.map(p => p.id === prodId ? {
-          ...p,
-          categoryId: catId,
-          subcategory: subcat,
-          name,
-          description: desc,
-          image: tempProductImage,
-          order: orderVal,
-          featured,
-          active,
-          isService: catId === 'jasa-edit-tugas',
-          requiresTargetInput: catId === 'social-media'
-        } : p);
-      } else {
-        state.products.push({
-          id: prodId,
-          categoryId: catId,
-          subcategory: subcat || (catId === 'jasa-edit-tugas' ? 'Jasa Edit' : ''),
-          name,
-          description: desc,
-          image: tempProductImage,
-          order: orderVal,
-          featured,
-          active,
-          isService: catId === 'jasa-edit-tugas',
-          requiresTargetInput: catId === 'social-media',
-          targetLabel: catId === 'social-media' ? 'Username / Link Target' : '',
-          estimatedTime: '1 - 2 Hari',
-          difficulty: 'Menengah',
-          variants: [
-            { id: `var-${Date.now()}`, plan: 'Paket Reguler', duration: '1 Bulan', basePrice: null, promoPrice: null, extraFee: 0, stock: 'Tersedia' }
-          ]
-        });
-      }
-
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      closeModal();
-      renderApp();
-      showToast(`Produk "${name}" berhasil disimpan.`);
-    }
-
-    function toggleAdminProductActive(prodId) {
-      state.products = state.products.map(p => p.id === prodId ? { ...p, active: !p.active } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Status produk diperbarui.');
-    }
-
-    function deleteAdminProduct(prodId) {
-      state.products = state.products.filter(p => p.id !== prodId);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Produk dihapus dari katalog.');
-    }
-
-    function addAdminVariant(e, prodId) {
-      e.preventDefault();
-      const plan = document.getElementById('new-var-plan').value.trim();
-      const duration = document.getElementById('new-var-dur').value.trim();
-      if (!plan || !duration) return;
-
-      state.products = state.products.map(p => p.id === prodId ? {
-        ...p,
-        variants: [...(p.variants || []), {
-          id: `var-${Date.now()}`,
-          plan,
-          duration,
-          basePrice: null,
-          promoPrice: null,
-          extraFee: 0,
-          stock: 'Tersedia'
-        }]
-      } : p);
-
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Variasi baru berhasil ditambahkan.');
-    }
-
-    function toggleAdminVariantStock(prodId, varId) {
-      state.products = state.products.map(p => p.id === prodId ? {
-        ...p,
-        variants: p.variants.map(v => v.id === varId ? { ...v, stock: v.stock === 'Habis' ? 'Tersedia' : 'Habis' } : v)
-      } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Stok variasi diperbarui.');
-    }
-
-    function deleteAdminVariant(prodId, varId) {
-      state.products = state.products.map(p => p.id === prodId ? {
-        ...p,
-        variants: p.variants.filter(v => v.id !== varId)
-      } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Variasi dihapus.');
-    }
-
-    function saveAdminProductPrices(prodId) {
-      state.products = state.products.map(p => {
-        if (p.id !== prodId) return p;
-        const updatedVars = (p.variants || []).map(v => {
-          const baseEl = document.getElementById(`price-base-${v.id}`);
-          const promoEl = document.getElementById(`price-promo-${v.id}`);
-          const extraEl = document.getElementById(`price-extra-${v.id}`);
-
-          const baseVal = baseEl && baseEl.value !== '' && Number(baseEl.value) > 0 ? Number(baseEl.value) : null;
-          const promoVal = promoEl && promoEl.value !== '' && Number(promoEl.value) > 0 ? Number(promoEl.value) : null;
-          const extraVal = extraEl && extraEl.value !== '' ? Number(extraEl.value) : 0;
-
-          return { ...v, basePrice: baseVal, promoPrice: promoVal, extraFee: extraVal };
-        });
-        return { ...p, variants: updatedVars };
-      });
-
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
-      renderApp();
-      showToast('Harga variasi berhasil disimpan & langsung tampil di katalog!');
-    }
-
-    function updateAdminOrderStatus(orderId, newStatus) {
-      state.orders = state.orders.map(o => o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o);
-      saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
-      updateOrderInDB(orderId, {
-  status: newStatus,
-  updatedAt: new Date().toISOString()
-});
-      renderApp();
-      showToast(`Status pesanan diperbarui ke "${newStatus}".`);
-    }
-
-    function openOrderInspectModal(orderId) {
-      const o = state.orders.find(ord => ord.id === orderId);
-      if (!o) return;
-      document.getElementById('modal-root').innerHTML = `
-        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl animate-fade-in">
-            <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Detail Pesanan ${escapeHtml(o.orderNumber)}</h3>
-              <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
-              <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-1">
-                <p><strong>Pelanggan:</strong> ${escapeHtml(o.customerName)}</p>
-                <p><strong>WhatsApp:</strong> ${escapeHtml(o.customerWhatsapp)}</p>
-                <p><strong>Metode Bayar:</strong> ${escapeHtml(o.paymentMethod || '-')}</p>
-                <p><strong>Status:</strong> ${escapeHtml(o.status)}</p>
-                ${o.customerNotes ? `<p><strong>Catatan:</strong> ${escapeHtml(o.customerNotes)}</p>` : ''}
-              </div>
-              <div class="space-y-2.5">
-                ${(o.items || []).map(it => `
-                  <div class="p-4 rounded-2xl border border-[#d5e3d6] space-y-1">
-                    <p class="font-extrabold text-sm">${escapeHtml(it.productName)} (${escapeHtml(it.plan)} - ${escapeHtml(it.duration)}) x${it.quantity}</p>
-                    <p class="font-bold text-[#2d5a3c]">Subtotal: ${formatRupiah(it.subtotal)}</p>
-                    ${it.customBrief?.targetAccount ? `<p><strong>Target Akun/Link:</strong> ${escapeHtml(it.customBrief.targetAccount)}</p>` : ''}
-                    ${it.customBrief?.deadline ? `<p><strong>Deadline:</strong> ${escapeHtml(it.customBrief.deadline)}</p>` : ''}
-                    ${it.customBrief?.briefDescription ? `<p><strong>Brief:</strong> ${escapeHtml(it.customBrief.briefDescription)}</p>` : ''}
-                    ${it.customBrief?.referenceFile ? `
-                      <a href="${it.customBrief.referenceFile.dataUrl}" download="${escapeHtml(it.customBrief.referenceFile.name)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-bold">
-                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
-                        <span>Unduh File Referensi: ${escapeHtml(it.customBrief.referenceFile.name)}</span>
-                      </a>
-                    ` : ''}
-                  </div>
-                `).join('')}
-              </div>
-              ${o.paymentProofImage ? `
-                <div>
-                  <p class="font-bold mb-1.5">Bukti Transfer:</p>
-                  <img src="${o.paymentProofImage}" alt="Bukti" class="max-h-60 rounded-xl border border-[#d5e3d6]" />
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function handleAdminQrisUpload(input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        state.settings.payments.QRIS.qrisImage = dataUrl;
-        saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-        renderApp();
-        showToast('Gambar QRIS berhasil diunggah.');
-      });
-    }
-
-    function saveAdminPaymentSettings(e) {
-      e.preventDefault();
-      state.settings.payments.QRIS.merchantName = document.getElementById('set-qris-name').value.trim();
-      state.settings.payments.DANA.accountNumber = document.getElementById('set-dana-num').value.trim();
-      state.settings.payments.DANA.accountName = document.getElementById('set-dana-name').value.trim();
-      state.settings.payments.SeaBank.accountNumber = document.getElementById('set-sea-num').value.trim();
-      state.settings.payments.SeaBank.accountName = document.getElementById('set-sea-name').value.trim();
-      state.settings.payments.gatewayWebhookUrl = document.getElementById('set-webhook-url').value.trim();
-      saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-      showToast('Pengaturan pembayaran berhasil disimpan!');
-    }
-
-    function handleWebsiteAssetUpload(field, input) {
-      const file = input.files?.[0];
-      if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        if (field === 'adminAvatar') {
-          state.adminAuth.adminAvatar = dataUrl;
-          saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-        } else {
-          state.settings[field] = dataUrl;
-          saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-        }
-        renderApp();
-        showToast('Gambar berhasil diperbarui.');
-      });
-    }
-
-    function saveAdminWebsiteSettings(e) {
-      e.preventDefault();
-      const waRawInput = document.getElementById('web-wa').value.trim();
-      state.settings.storeName = document.getElementById('web-name').value.trim() || 'CIFCUFS STORE';
-      state.settings.tagline = document.getElementById('web-tag').value.trim() || 'Your Digital Needs, One Place.';
-      state.settings.whatsappNumber = waRawInput || '0813-8598-2311';
-      state.settings.whatsappRaw = waRawInput.replace(/\D/g, '').replace(/^0/, '62') || '6281385982311';
-
-      state.adminAuth.adminName = document.getElementById('web-adm-name').value.trim() || 'Admin GALEYN';
-      state.adminAuth.email = document.getElementById('web-adm-email').value.trim() || 'admin@galeynstore.id';
-      const newPass = document.getElementById('web-adm-pass').value;
-      if (newPass && newPass.length >= 4) {
-        state.adminAuth.password = newPass;
-      }
-
-      saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-      saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-      renderApp();
-      showToast('Pengaturan website & akun admin berhasil disimpan!');
-    }
-
-    // =========================================================================
-    // =========================================================================
-    // FORM ULASAN PELANGGAN REAL-TIME
-    // =========================================================================
-    function openWriteReviewModal() {
-      state.reviewRatingInput = 5;
-      renderWriteReviewModal();
-    }
-
-    function setReviewRating(star) {
-      state.reviewRatingInput = star;
-      renderWriteReviewModal();
-    }
-
-    function renderWriteReviewModal() {
-      const activeProducts = state.products.filter(p => p.active);
-      document.getElementById('modal-root').innerHTML = `
-        <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
-          <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
-            <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <div>
-                <span class="text-[11px] font-bold uppercase tracking-wider text-[#4a7c59]">CIFCUFS STORE</span>
-                <h3 class="font-extrabold text-base text-[#181f1a]">Tulis Ulasan Pelanggan</h3>
-              </div>
-              <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-
-            <form onsubmit="submitCustomerReview(event)" class="p-6 space-y-4">
-              <div>
-                <label class="block text-xs font-bold text-[#181f1a] mb-1.5">Penilaian (Bintang)</label>
-                <div class="flex items-center gap-2">
-                  ${[1, 2, 3, 4, 5].map(num => `
-                    <button type="button" onclick="setReviewRating(${num})" class="p-2 rounded-xl border transition-all ${
-                      num <= state.reviewRatingInput
-                        ? 'border-amber-300 bg-amber-50 text-amber-400'
-                        : 'border-[#d5e3d6] bg-white text-stone-300'
-                    }">
-                      <i data-lucide="star" class="w-5 h-5 fill-current"></i>
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-[#181f1a] mb-1">Nama Anda *</label>
-                <input id="rev-name" type="text" required value="${escapeHtml(state.userProfile.name)}" placeholder="Masukkan nama Anda" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none" />
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-[#181f1a] mb-1">Nomor Pesanan (Opsional — untuk lencana Verified Buyer)</label>
-                <input id="rev-order-num" type="text" placeholder="Contoh: GS-2026XXXX" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none" />
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-[#181f1a] mb-1">Produk / Layanan yang Dipesan *</label>
-                <select id="rev-service" required class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] bg-white text-sm focus:border-[#4a7c59] focus:outline-none">
-                  ${activeProducts.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`).join('')}
-                  <option value="Layanan Lainnya">Layanan Lainnya</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-[#181f1a] mb-1">Ulasan Anda *</label>
-                <textarea id="rev-text" rows="3" required placeholder="Ceritakan pengalaman transaksi Anda di CIFCUFS STORE..." class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none"></textarea>
-              </div>
-
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
-                Kirim & Tampilkan Ulasan
-              </button>
-            </form>
-          </div>
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function submitCustomerReview(e) {
-      e.preventDefault();
-      const name = document.getElementById('rev-name').value.trim();
-      const orderNum = document.getElementById('rev-order-num').value.trim();
-      const service = document.getElementById('rev-service').value;
-      const reviewText = document.getElementById('rev-text').value.trim();
-
-      if (!name || !reviewText) {
-        showToast('Nama dan isi ulasan wajib diisi.', 'error');
-        return;
-      }
-
-      const matchedOrder = orderNum
-        ? state.orders.find(o => o.orderNumber.toLowerCase() === orderNum.toLowerCase())
-        : null;
-
-      const newReview = {
-        id: `rev-${Date.now()}`,
-        name,
-        service,
-        rating: state.reviewRatingInput || 5,
-        review: reviewText,
-        verifiedOrder: Boolean(matchedOrder),
-        createdAt: new Date().toISOString()
-      };
-
-      state.reviews.unshift(newReview);
-      saveToStorage(STORAGE_KEYS.REVIEWS, state.reviews);
-      saveReviewToDB(newReview);
-
-      closeModal();
-      renderApp();
-      showToast('Terima kasih! Ulasan Anda langsung ditampilkan.');
-    }
-
-    // =========================================================================
-    // 13. KONTROL NAVIGASI & RENDER ROOT
-    // =========================================================================
-    function navigateTo(page) {
-      state.activePage = page;
-      state.mobileMenuOpen = false;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      renderApp();
-    }
-
-    function navigateToCategory(slug) {
-      state.selectedCategorySlug = slug;
-      state.subCategoryFilter = 'all';
-      state.activePage = 'catalog';
-      state.mobileMenuOpen = false;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      renderApp();
-    }
-
-    function setSubCategoryFilter(sub) {
-      state.subCategoryFilter = sub;
-      renderApp();
-    }
-
-    function updateCatalogSearch(val) {
-      state.searchQuery = val;
-      renderApp();
-    }
-
-    function toggleOnlyPriced(checked) {
-      state.onlyPricedFilter = checked;
-      renderApp();
-    }
-
-    function resetCatalogFilters() {
-      state.selectedCategorySlug = 'all';
-      state.subCategoryFilter = 'all';
-      state.searchQuery = '';
-      state.onlyPricedFilter = false;
-      renderApp();
-    }
-
-    function toggleMobileMenu() {
-      state.mobileMenuOpen = !state.mobileMenuOpen;
-      renderTopAndNavbar();
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function toggleFaq(index) {
-      state.openFaqIndex = state.openFaqIndex === index ? -1 : index;
-      renderApp();
-    }
-
-    function openPaymentForOrder(orderId) {
-      state.activePaymentOrderId = orderId;
-      tempPaymentMethod = null;
-      tempProofDataUrl = '';
-      navigateTo('payment');
-    }
-
-    function setAdminMenu(menuId) {
-      state.activeAdminMenu = menuId;
-      renderApp();
-    }
-
-    function closeModal() {
-      document.getElementById('modal-root').innerHTML = '';
-    }
-
-    function renderApp() {
-      renderTopAndNavbar();
-      const mainEl = document.getElementById('app-main');
-      switch (state.activePage) {
-        case 'catalog':
-          mainEl.innerHTML = renderCatalogPage();
-          break;
-        case 'orders':
-          mainEl.innerHTML = renderOrdersPage();
-          break;
-        case 'about':
-          mainEl.innerHTML = renderAboutPage();
-          break;
-        case 'payment':
-          mainEl.innerHTML = renderPaymentPage();
-          break;
-        case 'admin':
-          mainEl.innerHTML = renderAdminDashboard();
-          break;
-        case 'home':
-        default:
-          mainEl.innerHTML = renderHomePage();
-          break;
-      }
-      if (window.lucide) lucide.createIcons();
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      renderApp();
-      fetchOrdersFromDB();
-      fetchReviewsFromDB();
-    });
-
-  </script>
-</body>
-</html>
