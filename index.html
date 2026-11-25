@@ -2230,18 +2230,27 @@ function confirmOrderPayment(orderId) {
       if (window.lucide) lucide.createIcons();
     }
 
-    function submitAdminLogin(e) {
+    async function submitAdminLogin(e) {
       e.preventDefault();
       const email = document.getElementById('adm-email').value.trim();
       const pass = document.getElementById('adm-pass').value;
-      if (email === state.adminAuth.email && pass === state.adminAuth.password) {
+
+      if (!window.firebase || !firebase.auth) {
+        showToast('SDK Firebase Auth belum dimuat. Periksa tag script di bagian head.', 'error');
+        return;
+      }
+
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, pass);
         state.adminAuth.isAuthenticated = true;
+        state.adminAuth.email = email;
         saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
         closeModal();
         navigateTo('admin');
         showToast('Berhasil masuk ke Admin Dashboard!');
-      } else {
-        showToast('Email atau kata sandi admin salah.', 'error');
+      } catch (err) {
+        console.error('Firebase Login Error:', err.code, err.message);
+        showToast('Login gagal: ' + (err.message || 'Email atau kata sandi salah.'), 'error');
       }
     }
 
