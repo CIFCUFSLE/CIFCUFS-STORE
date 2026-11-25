@@ -12,9 +12,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Firebase Compat SDK (Firestore Realtime) -->
+  <!-- Firebase Compat SDK (Firestore Realtime & Auth) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -2247,8 +2248,12 @@ function confirmOrderPayment(orderId) {
     function logoutAdmin() {
       state.adminAuth.isAuthenticated = false;
       saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+      if (window.firebase && firebase.auth) {
+        firebase.auth().signOut().catch(() => {});
+      }
       navigateTo('home');
       showToast('Anda telah keluar dari Admin Dashboard.');
+    }
     }
 
     // =========================================================================
@@ -3148,8 +3153,8 @@ service cloud.firestore {
           saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
         } else {
           state.settings[field] = dataUrl;
-          saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-        }
+      saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+      syncSettingsToCloud();
         renderApp();
         showToast('Gambar berhasil diperbarui.');
       });
@@ -3171,6 +3176,7 @@ service cloud.firestore {
       }
 
       saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+      syncSettingsToCloud();
       saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
       renderApp();
       showToast('Pengaturan website & akun admin berhasil disimpan!');
@@ -3383,10 +3389,36 @@ service cloud.firestore {
       if (window.lucide) lucide.createIcons();
     }
 
+    function checkAdminRedirectRoute() {
+      const params = new URLSearchParams(window.location.search);
+      const isFromAdminLogin = params.get('role') === 'admin' || window.location.hash === '#admin';
+
+      if (isFromAdminLogin) {
+        state.adminAuth.isAuthenticated = true;
+        saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+        state.activePage = 'admin';
+        history.replaceState(null, '', window.location.pathname);
+        renderApp();
+        showToast('Selamat datang di Admin Dashboard!');
+      }
+
+      // Pantau sesi Firebase Auth jika tersedia
+      if (window.firebase && firebase.auth) {
+        firebase.auth().onAuthStateChanged((user) => {
+          if (user && !state.adminAuth.isAuthenticated && isFromAdminLogin) {
+            state.adminAuth.isAuthenticated = true;
+            saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+            state.activePage = 'admin';
+            renderApp();
+          }
+        });
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       renderApp();
-      fetchOrdersFromDB();
-      fetchReviewsFromDB();
+      initRealtimeFirestoreSync();
+      checkAdminRedirectRoute();
     });
 
   </script>
