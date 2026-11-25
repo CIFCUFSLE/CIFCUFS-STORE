@@ -16,6 +16,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -1920,12 +1921,13 @@
               ontouchmove="handleHeroTouchMove(event)"
               ontouchend="handleHeroTouchEnd()"
             >
-              <!-- TRACK 3 SLIDE -->
-              <div id="hero-slider-track" class="hero-slider-track" style="transform: translateX(-${activeSlide * 100}%);">
-                ${slide1Html}
-                ${slide2Html}
-                ${slide3Html}
-              </div>
+             <!-- TRACK DINAMIS DARI FIREBASE (MAKSIMAL 4 SLIDE) -->
+<div id="hero-slider-track" class="hero-slider-track" style="transform: translateX(0%);">
+  <div class="w-full h-full flex-shrink-0 flex flex-col items-center justify-center bg-[#111018] text-center p-6">
+    <div class="w-8 h-8 border-2 border-[#873BFA] border-t-transparent rounded-full animate-spin mb-3"></div>
+    <p class="font-['Oxanium'] text-xs tracking-widest text-[#B8B5C5] uppercase">Memuat Banner...</p>
+  </div>
+</div>
 
               <!-- TOMBOL PANAH KIRI -->
               <button
@@ -1947,7 +1949,7 @@
                 <i data-lucide="chevron-right" class="w-5 h-5"></i>
               </button>
 
-              <!-- TEPAT 3 PAGINATION DOTS -->
+              <div id="hero-slider-dots" class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#090810]/70 border border-[#873BFA]/30 backdrop-blur-md"></div>
               <div class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#090810]/70 border border-[#873BFA]/30 backdrop-blur-md">
                 ${[0, 1, 2].map(idx => `
                   <button
@@ -3823,6 +3825,79 @@
         const s = state.settings;
         return `
           <div class="space-y-6">
+          <!-- PANEL KELOLA HERO BANNER (MAKSIMAL 4 SLIDE) -->
+          <div id="admin-hero-banner-manager" class="bg-[#111018] border border-[#7138D4]/40 rounded-3xl p-5 md:p-6 shadow-[0_0_25px_rgba(113,56,212,0.15)] space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+              <div>
+                <h2 class="font-['Oxanium'] text-xl font-bold text-white tracking-wide flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-[#873BFA] inline-block shadow-[0_0_10px_#873BFA]"></span>
+                  KELOLA HERO BANNER (SLIDER UTAMA)
+                </h2>
+                <p class="font-['Inter'] text-xs text-[#B8B5C5] mt-1">
+                  Unggah, edit, ganti gambar, dan atur urutan poster slider halaman utama (Maksimal <strong class="text-white">4 slide</strong>, maks. 5MB/gambar).
+                </p>
+              </div>
+              <span id="banner-slot-counter" class="font-['Oxanium'] text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#171322] border border-[#873BFA]/50 text-[#B88AFF]">
+                0 / 4 SLIDE TERPAKAI
+              </span>
+            </div>
+
+            <div id="banner-editor-box" class="bg-[#0D0D14] border border-white/10 rounded-2xl p-4">
+              <div class="flex items-center justify-between mb-3">
+                <h3 id="banner-form-title" class="font-['Oxanium'] text-sm font-bold text-[#B88AFF] uppercase tracking-wider">
+                  + Tambah Banner Baru
+                </h3>
+                <button type="button" id="btn-cancel-edit-banner" onclick="resetBannerForm()" class="hidden text-xs text-red-400 hover:text-red-300 underline">
+                  Batal Edit
+                </button>
+              </div>
+
+              <input type="hidden" id="edit-banner-id" value="">
+
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                <div class="lg:col-span-6 space-y-3">
+                  <div>
+                    <label class="block text-xs font-medium text-[#B8B5C5] mb-1.5">Pilih Gambar Poster (JPG, PNG, WEBP)</label>
+                    <input type="file" id="hero-banner-file-input" accept="image/png, image/jpeg, image/webp"
+                      onchange="previewHeroBannerFile(event)"
+                      class="block w-full text-xs text-[#B8B5C5] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-['Oxanium'] file:font-semibold file:bg-[#7138D4] file:text-white hover:file:bg-[#873BFA] file:cursor-pointer bg-[#171322] border border-white/10 rounded-lg p-1.5">
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-medium text-[#B8B5C5] mb-1.5">Judul / Keterangan Banner</label>
+                    <input type="text" id="hero-banner-alt-input" placeholder="Contoh: Promo Paket Streaming Hemat"
+                      class="w-full bg-[#171322] border border-white/10 focus:border-[#873BFA] rounded-lg px-3 py-2 text-sm text-white placeholder-[#B8B5C5]/40 outline-none">
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3 pt-1">
+                    <button type="button" id="btn-save-hero-banner" onclick="saveHeroBanner()"
+                      class="font-['Oxanium'] font-semibold text-xs uppercase tracking-wider px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#7138D4] to-[#873BFA] hover:opacity-95 text-white shadow-[0_0_15px_rgba(135,59,250,0.4)] transition disabled:opacity-40 disabled:cursor-not-allowed">
+                      Simpan Banner
+                    </button>
+                    <span id="banner-upload-status" class="text-xs text-[#B88AFF] hidden">Mengunggah ke Firebase...</span>
+                  </div>
+                </div>
+
+                <div class="lg:col-span-6">
+                  <label class="block text-xs font-medium text-[#B8B5C5] mb-1.5">Preview Sebelum Simpan</label>
+                  <div id="hero-banner-preview-wrapper" class="relative w-full aspect-[16/7] rounded-xl overflow-hidden bg-[#171322] border border-dashed border-[#7138D4]/50 flex items-center justify-center">
+                    <img id="hero-banner-preview-img" src="" alt="Preview Banner" class="hidden w-full h-full object-cover">
+                    <div id="hero-banner-preview-placeholder" class="text-center px-4">
+                      <p class="font-['Oxanium'] text-xs text-[#B8B5C5]">Belum ada gambar dipilih</p>
+                      <p class="text-[11px] text-[#B8B5C5]/60 mt-0.5">Preview poster akan muncul di sini sebelum disimpan</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="font-['Oxanium'] text-sm font-bold text-white uppercase tracking-wider mb-3">
+                Daftar Slide Aktif (Urutan Tampil di Beranda)
+              </h3>
+              <div id="admin-banner-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+          </div>
             <form onsubmit="saveAdminWebsiteSettings(event)" class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
               <div>
                 <h2 class="text-xl font-bold text-[#181f1a]">14. Pengaturan Website & Profil Admin</h2>
@@ -4511,24 +4586,16 @@ service cloud.firestore {
       renderTopAndNavbar();
       const mainEl = document.getElementById('app-main');
       if (state.activePage === 'home') {
-        mainEl.innerHTML = renderHomePage();
-      } else if (state.activePage === 'catalog') {
-        mainEl.innerHTML = renderCatalogPage();
-      } else if (state.activePage === 'orders') {
-        mainEl.innerHTML = renderOrdersPage();
-      } else if (state.activePage === 'payment') {
-        mainEl.innerHTML = renderPaymentPage();
-      } else if (state.activePage === 'about') {
-        mainEl.innerHTML = renderAboutPage();
-      } else if (state.activePage === 'admin') {
-        mainEl.innerHTML = renderAdminDashboard();
-      }
-      if (window.lucide) lucide.createIcons();
-      updateLiveClockElements();
-      if (state.activePage === 'home' && !heroAutoplayTimer) {
-        restartHeroAutoplay();
-      }
-    }
+    mainEl.innerHTML = renderHomePage();
+        renderPublicHeroSlider();
+    renderPublicHeroSlider(); // <-- TAMBAHKAN BARIS INI
+  } else if (state.activePage === 'catalog') {
+    ...
+  } else if (state.activePage === 'admin') {
+    mainEl.innerHTML = renderAdminDashboard();
+        renderAdminBannerManager();
+    renderAdminBannerManager(); // <-- TAMBAHKAN BARIS INI
+  }
 
     // Boot Aplikasi & Deteksi Rute URL Admin (#admin / ?admin=1 / /admin)
     function checkAdminRedirectRoute() {
@@ -4560,6 +4627,348 @@ service cloud.firestore {
       updateLiveClockElements();
       checkAndExpireUnpaidOrders();
     }, 1000);
+      // ============================================================================
+ // MANAJEMEN HERO BANNER (MAX 4 SLIDE) - CIFCUFS STORE
+ // ============================================================================
+ const MAX_HERO_BANNERS = 4;
+ let heroBannersState = [];
+ let currentHeroSlideIndex = 0;
+ let heroSliderInterval = null;
+ let selectedBannerFile = null;
+
+ function initHeroBannerSync() {
+   const db = firebase.firestore();
+   db.collection('store_config').doc('main').onSnapshot((doc) => {
+     const data = doc.exists ? doc.data() : {};
+     const rawBanners = Array.isArray(data.heroBanners) ? data.heroBanners : [];
+     heroBannersState = rawBanners
+       .sort((a, b) => (a.order || 0) - (b.order || 0))
+       .slice(0, MAX_HERO_BANNERS);
+
+     renderPublicHeroSlider();
+     renderAdminBannerManager();
+   }, (error) => {
+     console.error('Gagal memuat data Hero Banner:', error);
+   });
+ }
+
+ function renderPublicHeroSlider() {
+   const track = document.getElementById('hero-slider-track');
+   const dotsContainer = document.getElementById('hero-slider-dots');
+   if (!track) return;
+
+   if (heroBannersState.length === 0) {
+     track.innerHTML = `
+       <div class="w-full h-full flex-shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#111018] via-[#171322] to-[#090810] text-center p-8 min-h-[220px] sm:min-h-[300px]">
+         <h2 class="font-['Oxanium'] text-2xl sm:text-4xl font-extrabold text-white tracking-wide">CIFCUFS STORE</h2>
+         <p class="font-['Inter'] text-xs sm:text-sm text-[#B8B5C5] mt-2">YOUR DIGITAL NEEDS, ONE PLACE.</p>
+       </div>
+     `;
+     if (dotsContainer) dotsContainer.innerHTML = '';
+     stopHeroAutoplay();
+     return;
+   }
+
+   track.innerHTML = heroBannersState.map((banner, idx) => `
+     <div class="w-full h-full flex-shrink-0 relative bg-[#090810]">
+       <img 
+         src="${banner.imageUrl}" 
+         alt="${escapeHtmlSafe(banner.altText || 'CIFCUFS STORE Banner ' + (idx + 1))}" 
+         class="w-full h-full object-cover object-center select-none"
+         loading="${idx === 0 ? 'eager' : 'lazy'}"
+       >
+     </div>
+   `).join('');
+
+   if (dotsContainer) {
+     if (heroBannersState.length > 1) {
+       dotsContainer.classList.remove('hidden');
+       dotsContainer.innerHTML = heroBannersState.map((_, idx) => `
+         <button type="button" onclick="goToHeroSlide(${idx})" aria-label="Slide ${idx + 1}"
+           class="h-2 rounded-full transition-all duration-300 ${idx === currentHeroSlideIndex ? 'w-7 bg-[#873BFA] shadow-[0_0_12px_rgba(135,59,250,0.85)]' : 'w-2.5 bg-white/30 hover:bg-[#B88AFF]/70'}">
+         </button>
+       `).join('');
+     } else {
+       dotsContainer.classList.add('hidden');
+     }
+   }
+
+   if (currentHeroSlideIndex >= heroBannersState.length) currentHeroSlideIndex = 0;
+   updateHeroSlidePosition();
+   if (heroBannersState.length > 1) startHeroAutoplay();
+   else stopHeroAutoplay();
+ }
+
+ function goToHeroSlide(index) {
+   if (heroBannersState.length === 0) return;
+   currentHeroSlideIndex = (index + heroBannersState.length) % heroBannersState.length;
+   updateHeroSlidePosition();
+ }
+
+ function moveHeroSlide(step) { goToHeroSlide(currentHeroSlideIndex + step); }
+ function prevHeroSlide() { moveHeroSlide(-1); }
+ function nextHeroSlide() { moveHeroSlide(1); }
+ function pauseHeroAutoplay() { stopHeroAutoplay(); }
+ function resumeHeroAutoplay() { if (heroBannersState.length > 1) startHeroAutoplay(); }
+
+ function updateHeroSlidePosition() {
+   const track = document.getElementById('hero-slider-track');
+   const dotsContainer = document.getElementById('hero-slider-dots');
+   if (track) track.style.transform = `translateX(-${currentHeroSlideIndex * 100}%)`;
+   if (dotsContainer) {
+     dotsContainer.querySelectorAll('button').forEach((dot, idx) => {
+       dot.className = idx === currentHeroSlideIndex
+         ? 'h-2 w-7 rounded-full transition-all duration-300 bg-[#873BFA] shadow-[0_0_12px_rgba(135,59,250,0.85)]'
+         : 'h-2 w-2.5 rounded-full transition-all duration-300 bg-white/30 hover:bg-[#B88AFF]/70';
+     });
+   }
+ }
+
+ function startHeroAutoplay() {
+   stopHeroAutoplay();
+   heroSliderInterval = setInterval(() => moveHeroSlide(1), 5000);
+ }
+
+ function stopHeroAutoplay() {
+   if (heroSliderInterval) {
+     clearInterval(heroSliderInterval);
+     heroSliderInterval = null;
+   }
+ }
+
+ function previewHeroBannerFile(event) {
+   const file = event.target.files[0];
+   const previewImg = document.getElementById('hero-banner-preview-img');
+   const placeholder = document.getElementById('hero-banner-preview-placeholder');
+
+   if (!file) { selectedBannerFile = null; return; }
+   if (!file.type.startsWith('image/')) {
+     alert('Format file tidak valid. Pilih JPG, PNG, atau WEBP.');
+     event.target.value = '';
+     return;
+   }
+   if (file.size > 5 * 1024 * 1024) {
+     alert('Ukuran gambar maksimal 5MB.');
+     event.target.value = '';
+     return;
+   }
+
+   selectedBannerFile = file;
+   const reader = new FileReader();
+   reader.onload = (e) => {
+     previewImg.src = e.target.result;
+     previewImg.classList.remove('hidden');
+     placeholder.classList.add('hidden');
+   };
+   reader.readAsDataURL(file);
+ }
+
+ async function saveHeroBanner() {
+   const editId = document.getElementById('edit-banner-id').value.trim();
+   const altText = document.getElementById('hero-banner-alt-input').value.trim();
+   const saveBtn = document.getElementById('btn-save-hero-banner');
+   const statusEl = document.getElementById('banner-upload-status');
+
+   if (!editId && heroBannersState.length >= MAX_HERO_BANNERS) {
+     alert('Maksimal 4 slide banner sudah tercapai.');
+     return;
+   }
+   if (!editId && !selectedBannerFile) {
+     alert('Silakan pilih gambar poster terlebih dahulu.');
+     return;
+   }
+
+   try {
+     saveBtn.disabled = true;
+     statusEl.classList.remove('hidden');
+     statusEl.textContent = 'Mengunggah ke Firebase...';
+
+     const db = firebase.firestore();
+     const storage = firebase.storage();
+     let updatedBanners = [...heroBannersState];
+
+     if (editId) {
+       const targetIndex = updatedBanners.findIndex(b => b.id === editId);
+       if (targetIndex === -1) throw new Error('Banner tidak ditemukan.');
+
+       let imageUrl = updatedBanners[targetIndex].imageUrl;
+       let storagePath = updatedBanners[targetIndex].storagePath || '';
+
+       if (selectedBannerFile) {
+         if (storagePath) {
+           try { await storage.ref(storagePath).delete(); } catch (e) {}
+         }
+         const ext = selectedBannerFile.name.split('.').pop() || 'webp';
+         storagePath = `hero_banners/${editId}_${Date.now()}.${ext}`;
+         const snap = await storage.ref(storagePath).put(selectedBannerFile);
+         imageUrl = await snap.ref.getDownloadURL();
+       }
+
+       updatedBanners[targetIndex] = {
+         ...updatedBanners[targetIndex],
+         imageUrl,
+         storagePath,
+         altText: altText || updatedBanners[targetIndex].altText,
+         updatedAt: Date.now()
+       };
+     } else {
+       const newId = 'banner_' + Date.now();
+       const ext = selectedBannerFile.name.split('.').pop() || 'webp';
+       const storagePath = `hero_banners/${newId}.${ext}`;
+       const snap = await storage.ref(storagePath).put(selectedBannerFile);
+       const imageUrl = await snap.ref.getDownloadURL();
+
+       updatedBanners.push({
+         id: newId,
+         imageUrl,
+         storagePath,
+         altText: altText || `CIFCUFS STORE Promo ${updatedBanners.length + 1}`,
+         order: updatedBanners.length + 1,
+         updatedAt: Date.now()
+       });
+     }
+
+     updatedBanners = updatedBanners.map((item, idx) => ({ ...item, order: idx + 1 }));
+     await db.collection('store_config').doc('main').set({ heroBanners: updatedBanners }, { merge: true });
+
+     resetBannerForm();
+     if (typeof showToast === 'function') {
+       showToast(editId ? 'Banner berhasil diperbarui!' : 'Banner baru berhasil ditambahkan!');
+     } else {
+       alert(editId ? 'Banner berhasil diperbarui!' : 'Banner baru berhasil ditambahkan!');
+     }
+   } catch (error) {
+     console.error('Error simpan banner:', error);
+     alert('Gagal menyimpan banner: ' + error.message);
+   } finally {
+     saveBtn.disabled = false;
+     statusEl.classList.add('hidden');
+   }
+ }
+
+ function renderAdminBannerManager() {
+   const listEl = document.getElementById('admin-banner-list');
+   const counterEl = document.getElementById('banner-slot-counter');
+   const saveBtn = document.getElementById('btn-save-hero-banner');
+   const editId = document.getElementById('edit-banner-id')?.value;
+   if (!listEl) return;
+
+   if (counterEl) counterEl.textContent = `${heroBannersState.length} / ${MAX_HERO_BANNERS} SLIDE TERPAKAI`;
+   if (saveBtn && !editId) saveBtn.disabled = heroBannersState.length >= MAX_HERO_BANNERS;
+
+   if (heroBannersState.length === 0) {
+     listEl.innerHTML = `
+       <div class="col-span-full bg-[#0D0D14] border border-white/10 rounded-xl p-6 text-center">
+         <p class="font-['Oxanium'] text-sm text-[#B8B5C5]">Belum ada poster banner yang diunggah.</p>
+         <p class="text-xs text-[#B8B5C5]/60 mt-1">Gunakan form di atas untuk mengunggah slide pertama.</p>
+       </div>
+     `;
+     return;
+   }
+
+   listEl.innerHTML = heroBannersState.map((banner, idx) => `
+     <div class="bg-[#0D0D14] border border-white/10 rounded-xl overflow-hidden flex flex-col justify-between">
+       <div class="relative aspect-[16/7] bg-black overflow-hidden">
+         <img src="${banner.imageUrl}" alt="${escapeHtmlSafe(banner.altText)}" class="w-full h-full object-cover">
+         <span class="absolute top-2.5 left-2.5 font-['Oxanium'] text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#090810]/85 border border-[#873BFA] text-white">
+           SLIDE #${idx + 1}
+         </span>
+       </div>
+       <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+         <p class="font-['Inter'] text-xs font-medium text-white truncate">${escapeHtmlSafe(banner.altText || 'Banner #' + (idx + 1))}</p>
+         <div class="flex items-center gap-1.5 flex-shrink-0">
+           <button type="button" onclick="reorderHeroBanner(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="px-2 py-1.5 rounded-lg bg-[#171322] hover:bg-[#7138D4]/40 border border-white/10 text-xs text-white disabled:opacity-30">↑</button>
+           <button type="button" onclick="reorderHeroBanner(${idx}, 1)" ${idx === heroBannersState.length - 1 ? 'disabled' : ''} class="px-2 py-1.5 rounded-lg bg-[#171322] hover:bg-[#7138D4]/40 border border-white/10 text-xs text-white disabled:opacity-30">↓</button>
+           <button type="button" onclick="startEditHeroBanner('${banner.id}')" class="px-3 py-1.5 rounded-lg bg-[#7138D4]/25 hover:bg-[#7138D4] border border-[#873BFA]/50 font-['Oxanium'] text-xs font-semibold text-white transition">Edit</button>
+           <button type="button" onclick="deleteHeroBanner('${banner.id}')" class="px-3 py-1.5 rounded-lg bg-red-500/15 hover:bg-red-600 border border-red-500/40 font-['Oxanium'] text-xs font-semibold text-red-300 hover:text-white transition">Hapus</button>
+         </div>
+       </div>
+     </div>
+   `).join('');
+ }
+
+ function startEditHeroBanner(bannerId) {
+   const banner = heroBannersState.find(b => b.id === bannerId);
+   if (!banner) return;
+   document.getElementById('edit-banner-id').value = banner.id;
+   document.getElementById('hero-banner-alt-input').value = banner.altText || '';
+   document.getElementById('banner-form-title').textContent = `Edit Banner (Slide #${heroBannersState.indexOf(banner) + 1})`;
+   document.getElementById('btn-cancel-edit-banner').classList.remove('hidden');
+   document.getElementById('btn-save-hero-banner').disabled = false;
+   document.getElementById('btn-save-hero-banner').textContent = 'Simpan Perubahan';
+
+   const previewImg = document.getElementById('hero-banner-preview-img');
+   const placeholder = document.getElementById('hero-banner-preview-placeholder');
+   previewImg.src = banner.imageUrl;
+   previewImg.classList.remove('hidden');
+   placeholder.classList.add('hidden');
+   selectedBannerFile = null;
+   document.getElementById('banner-editor-box').scrollIntoView({ behavior: 'smooth', block: 'center' });
+ }
+
+ function resetBannerForm() {
+   document.getElementById('edit-banner-id').value = '';
+   document.getElementById('hero-banner-file-input').value = '';
+   document.getElementById('hero-banner-alt-input').value = '';
+   document.getElementById('banner-form-title').textContent = '+ Tambah Banner Baru';
+   document.getElementById('btn-cancel-edit-banner').classList.add('hidden');
+   document.getElementById('btn-save-hero-banner').textContent = 'Simpan Banner';
+   document.getElementById('btn-save-hero-banner').disabled = heroBannersState.length >= MAX_HERO_BANNERS;
+
+   const previewImg = document.getElementById('hero-banner-preview-img');
+   const placeholder = document.getElementById('hero-banner-preview-placeholder');
+   previewImg.src = '';
+   previewImg.classList.add('hidden');
+   placeholder.classList.remove('hidden');
+   selectedBannerFile = null;
+ }
+
+ async function reorderHeroBanner(index, direction) {
+   const targetIndex = index + direction;
+   if (targetIndex < 0 || targetIndex >= heroBannersState.length) return;
+
+   const reordered = [...heroBannersState];
+   const [moved] = reordered.splice(index, 1);
+   reordered.splice(targetIndex, 0, moved);
+   const normalized = reordered.map((item, idx) => ({ ...item, order: idx + 1 }));
+
+   try {
+     await firebase.firestore().collection('store_config').doc('main').set({ heroBanners: normalized }, { merge: true });
+   } catch (err) {
+     alert('Gagal mengubah urutan banner: ' + err.message);
+   }
+ }
+
+ async function deleteHeroBanner(bannerId) {
+   const target = heroBannersState.find(b => b.id === bannerId);
+   if (!target || !confirm('Hapus poster banner ini secara permanen?')) return;
+
+   try {
+     if (target.storagePath) {
+       try { await firebase.storage().ref(target.storagePath).delete(); } catch (e) {}
+     }
+     const remaining = heroBannersState
+       .filter(b => b.id !== bannerId)
+       .map((item, idx) => ({ ...item, order: idx + 1 }));
+
+     await firebase.firestore().collection('store_config').doc('main').set({ heroBanners: remaining }, { merge: true });
+     if (document.getElementById('edit-banner-id').value === bannerId) resetBannerForm();
+   } catch (err) {
+     alert('Gagal menghapus banner: ' + err.message);
+   }
+ }
+
+ function escapeHtmlSafe(str) {
+   if (!str) return '';
+   return String(str)
+     .replace(/&/g, '&')
+     .replace(/</g, '<')
+     .replace(/>/g, '>')
+     .replace(/"/g, '"')
+     .replace(/'/g, ''');
+ }
+
+ initHeroBannerSync();
   </script>
 </body>
 </html>
