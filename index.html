@@ -968,70 +968,77 @@ function saveToStorage(key, value) {
       return `
         <div class="space-y-16 pb-10">
           <!-- HERO SECTION -->
-          <section class="bg-gradient-to-br from-[#181f1a] via-[#223629] to-[#2d5a3c] text-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-22 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              <div class="lg:col-span-7 space-y-6">
-                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-[#b6dec1] text-xs font-semibold">
-                  <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                  <span>${escapeHtml(s.tagline)}</span>
-                </div>
-                <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
-                  Solusi Aplikasi Premium, Kreatif & Digital dalam <span class="text-[#95d1a6]">Satu Tempat.</span>
-                </h1>
-                <p class="text-[#d2e3d6] text-sm sm:text-lg max-w-2xl leading-relaxed">
-                  Temukan layanan streaming, musik, AI produktivitas, tools editing profesional, pertumbuhan media sosial organik sesuai ketentuan platform, hingga jasa desain & pendampingan tugas terpercaya.
-                </p>
-                <div class="flex flex-wrap items-center gap-3.5 pt-2">
-                  <button onclick="navigateToCategory('all')" class="px-6 py-3.5 rounded-xl bg-[#4a7c59] hover:bg-[#5b946c] text-white font-bold text-sm inline-flex items-center gap-2 shadow-lg transition-all">
-                    <span>Jelajahi Katalog</span>
-                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                  </button>
-                  <button onclick="navigateTo('orders')" class="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm transition-all">
-                    Lacak Pesanan
-                  </button>
-                </div>
-                <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/10 max-w-md">
-                  <div>
-                    <p class="text-2xl font-extrabold">6</p>
-                    <p class="text-xs text-[#b6dec1]">Kategori Utama</p>
-                  </div>
-                  <div>
-                    <p class="text-2xl font-extrabold">${state.products.filter(p => p.active).length}+</p>
-                    <p class="text-xs text-[#b6dec1]">Produk & Jasa</p>
-                  </div>
-                  <div>
-                    <p class="text-2xl font-extrabold">8</p>
-                    <p class="text-xs text-[#b6dec1]">Tahap Pelacakan</p>
-                  </div>
-                </div>
+          ${s.heroBannerImage ? `
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+              <div class="rounded-2xl sm:rounded-3xl overflow-hidden border border-[#d5e3d6] shadow-md bg-white">
+                <img
+                  src="${s.heroBannerImage}"
+                  alt="Banner ${escapeHtml(s.storeName)}"
+                  class="w-full h-auto block object-contain"
+                />
               </div>
+            </section>
+          ` : `
+            <section class="bg-gradient-to-br from-[#181f1a] via-[#223629] to-[#2d5a3c] text-white">
+              <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-22 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div class="lg:col-span-7 space-y-6">
+                  <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 text-[#b6dec1] text-xs font-semibold">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>${escapeHtml(s.tagline)}</span>
+                  </div>
+                  <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+                    Solusi Aplikasi Premium, Kreatif & Digital dalam <span class="text-[#95d1a6]">Satu Tempat.</span>
+                  </h1>
+                  <p class="text-[#d2e3d6] text-sm sm:text-lg max-w-2xl leading-relaxed">
+                    Temukan layanan streaming, musik, AI produktivitas, tools editing profesional, pertumbuhan media sosial organik sesuai ketentuan platform, hingga jasa desain & pendampingan tugas terpercaya.
+                  </p>
+                  <div class="flex flex-wrap items-center gap-3.5 pt-2">
+                    <button onclick="navigateToCategory('all')" class="px-6 py-3.5 rounded-xl bg-[#4a7c59] hover:bg-[#5b946c] text-white font-bold text-sm inline-flex items-center gap-2 shadow-lg transition-all">
+                      <span>Jelajahi Katalog</span>
+                      <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="navigateTo('orders')" class="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm transition-all">
+                      Lacak Pesanan
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/10 max-w-md">
+                    <div>
+                      <p class="text-2xl font-extrabold">6</p>
+                      <p class="text-xs text-[#b6dec1]">Kategori Utama</p>
+                    </div>
+                    <div>
+                      <p class="text-2xl font-extrabold">${state.products.filter(p => p.active).length}+</p>
+                      <p class="text-xs text-[#b6dec1]">Produk & Jasa</p>
+                    </div>
+                    <div>
+                      <p class="text-2xl font-extrabold">8</p>
+                      <p class="text-xs text-[#b6dec1]">Tahap Pelacakan</p>
+                    </div>
+                  </div>
+                </div>
 
-              <div class="lg:col-span-5">
-                ${s.heroBannerImage
-                  ? `<div class="rounded-3xl overflow-hidden border-2 border-white/15 shadow-2xl">
-                      <img src="${s.heroBannerImage}" alt="Banner CIFCUFS STORE" class="w-full h-80 sm:h-96 object-cover" />
-                    </div>`
-                  : `<div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl">
-                      <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold uppercase tracking-wider text-[#b6dec1]">Ekosistem Digital Matcha</span>
-                        <span class="px-2.5 py-1 rounded-full bg-[#4a7c59] text-white text-[11px] font-bold">CIFCUFS STORE</span>
-                      </div>
-                      <div class="grid grid-cols-2 gap-3">
-                        ${state.categories.map(cat => `
-                          <button onclick="navigateToCategory('${cat.slug}')" class="p-3.5 rounded-2xl bg-[#181f1a]/75 hover:bg-[#181f1a] border border-white/10 text-left transition-all group">
-                            <div class="w-8 h-8 rounded-lg bg-[#4a7c59]/30 text-[#95d1a6] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                              <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
-                            </div>
-                            <p class="font-bold text-xs text-white line-clamp-1">${escapeHtml(cat.name)}</p>
-                            <p class="text-[11px] text-[#a3bda9] mt-0.5">${state.products.filter(p => p.categoryId === cat.id && p.active).length} Layanan</p>
-                          </button>
-                        `).join('')}
-                      </div>
-                    </div>`
-                }
+                <div class="lg:col-span-5">
+                  <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold uppercase tracking-wider text-[#b6dec1]">Ekosistem Digital Matcha</span>
+                      <span class="px-2.5 py-1 rounded-full bg-[#4a7c59] text-white text-[11px] font-bold">${escapeHtml(s.storeName)}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      ${state.categories.map(cat => `
+                        <button onclick="navigateToCategory('${cat.slug}')" class="p-3.5 rounded-2xl bg-[#181f1a]/75 hover:bg-[#181f1a] border border-white/10 text-left transition-all group">
+                          <div class="w-8 h-8 rounded-lg bg-[#4a7c59]/30 text-[#95d1a6] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
+                          </div>
+                          <p class="font-bold text-xs text-white line-clamp-1">${escapeHtml(cat.name)}</p>
+                          <p class="text-[11px] text-[#a3bda9] mt-0.5">${state.products.filter(p => p.categoryId === cat.id && p.active).length} Layanan</p>
+                        </button>
+                      `).join('')}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          `}
 
           <!-- 6 KATEGORI KATALOG -->
           <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2764,12 +2771,19 @@ function confirmOrderPayment(orderId) {
                 </div>
 
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
-                  <p class="text-xs font-bold">Banner Hero</p>
-                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Matcha</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
-                    Upload Banner
-                    <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('heroBannerImage', this)" class="hidden" />
-                  </label>
+                  <p class="text-xs font-bold">Banner Hero (Canva)</p>
+                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover border border-[#d5e3d6]" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Matcha</div>`}
+                  <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                    <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
+                      Upload Banner
+                      <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('heroBannerImage', this)" class="hidden" />
+                    </label>
+                    ${s.heroBannerImage ? `
+                      <button type="button" onclick="removeHeroBanner()" class="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-[#d94e4e] text-xs font-bold">
+                        Hapus
+                      </button>
+                    ` : ''}
+                  </div>
                 </div>
 
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
@@ -3170,18 +3184,41 @@ service cloud.firestore {
     function handleWebsiteAssetUpload(field, input) {
       const file = input.files?.[0];
       if (!file) return;
-      readImageFileAsDataUrl(file, (dataUrl) => {
-        if (field === 'adminAvatar') {
-          state.adminAuth.adminAvatar = dataUrl;
-          saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-        } else {
-          state.settings[field] = dataUrl;
-          saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-          syncSettingsToCloud();
-        }
-        renderApp();
-        showToast('Gambar berhasil diperbarui.');
-      });
+      const maxW = field === 'heroBannerImage' ? 1400 : 800;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+          if (field === 'adminAvatar') {
+            state.adminAuth.adminAvatar = dataUrl;
+            saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+          } else {
+            state.settings[field] = dataUrl;
+            saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+            syncSettingsToCloud();
+          }
+          renderApp();
+          showToast('Gambar berhasil diperbarui & tersimpan ke cloud.');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeHeroBanner() {
+      state.settings.heroBannerImage = '';
+      saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+      syncSettingsToCloud();
+      renderApp();
+      showToast('Banner Hero dihapus, kembali ke tampilan default.');
     }
 
     function saveAdminWebsiteSettings(e) {
