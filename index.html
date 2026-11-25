@@ -611,7 +611,7 @@ function saveToStorage(key, value) {
       firestoreDB.collection('store_config').doc('catalog').onSnapshot((doc) => {
         if (doc.exists && Array.isArray(doc.data().products)) {
           state.products = doc.data().products;
-          saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+          saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
           if (['home', 'catalog', 'admin'].includes(state.activePage)) {
             renderApp();
           }
@@ -749,11 +749,24 @@ function saveToStorage(key, value) {
     }
 
     function readImageFileAsDataUrl(file, callback) {
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => callback(reader.result);
-      reader.readAsDataURL(file);
-    }
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 800;
+      const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
     // =========================================================================
     // 4. RENDER HEADER, NAVBAR & FOOTER
@@ -916,7 +929,7 @@ function saveToStorage(key, value) {
               </a>
             </div>
           </div>
-          <div class="border-t border-[#253329] py-5 px-4 text-center text-xs text-[#8ba391]">
+          <div ondblclick="openAdminLoginModal()" title="Admin Access" class="border-t border-[#253329] py-5 px-4 text-center text-xs text-[#8ba391] cursor-default select-none">
             © ${new Date().getFullYear()} ${escapeHtml(s.storeName)}. All rights reserved. • ${escapeHtml(s.tagline)}
           </div>
         `;
@@ -3413,10 +3426,18 @@ service cloud.firestore {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+  if (window.firebase && firebase.auth) {
+    firebase.auth().onAuthStateChanged((user) => {
+      state.adminAuth.isAuthenticated = Boolean(user);
+      if (user) state.adminAuth.email = user.email;
+      saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
       renderApp();
-      initRealtimeFirestoreSync();
-      checkAdminRedirectRoute();
     });
+  }
+  renderApp();
+  initRealtimeFirestoreSync();
+  checkAdminRedirectRoute();
+});
 
   </script>
 </body>
