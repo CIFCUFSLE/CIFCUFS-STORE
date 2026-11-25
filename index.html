@@ -1016,14 +1016,14 @@
     // 3. HELPER FORMAT, FEE LAYANAN Rp100, TIMESTAMP WIB & LOGIKA HARGA
     // =========================================================================
     function escapeHtml(str) {
-   if (str === null || str === undefined) return '';
-   return String(str)
-     .replace(/&/g, '&')
-     .replace(/</g, '<')
-     .replace(/>/g, '>')
-     .replace(/"/g, '"')
-     .replace(/'/g, ''');
- }
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, "'");
+    }
 
     function formatRupiah(amount) {
       if (amount === null || amount === undefined || isNaN(amount) || Number(amount) <= 0) {
