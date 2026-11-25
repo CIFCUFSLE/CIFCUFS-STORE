@@ -713,7 +713,59 @@ function saveToStorage(key, value) {
       if (valid.length === 0) return null;
       return Math.min(...valid);
     }
+const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 menit)
 
+    function getOrderPaymentDeadline(order) {
+      if (!order) return 0;
+      if (order.paymentDeadline) return new Date(order.paymentDeadline).getTime();
+      return new Date(order.createdAt).getTime() + PAYMENT_TIMEOUT_MS;
+    }
+
+    function formatRemainingCountdown(ms) {
+      if (ms <= 0) return '00:00:00';
+      const totalSec = Math.floor(ms / 1000);
+      const hrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSec % 60).padStart(2, '0');
+      return `${hrs}:${mins}:${secs}`;
+    }
+
+    function checkAndExpireUnpaidOrders() {
+      const now = Date.now();
+      let hasChanges = false;
+
+      state.orders = state.orders.map((o) => {
+        if (o.status === 'Waiting for Payment' && now >= getOrderPaymentDeadline(o)) {
+          hasChanges = true;
+          const updatedAt = new Date().toISOString();
+          updateOrderInDB(o.id, {
+            status: 'Cancelled',
+            cancelReason: 'Otomatis dibatalkan (melewati batas waktu pembayaran 1 jam)',
+            updatedAt
+          });
+          return {
+            ...o,
+            status: 'Cancelled',
+            cancelReason: 'Otomatis dibatalkan (melewati batas waktu pembayaran 1 jam)',
+            updatedAt
+          };
+        }
+        return o;
+      });
+
+      if (hasChanges) {
+        saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
+        if (['payment', 'orders', 'admin'].includes(state.activePage)) {
+          renderApp();
+        }
+      }
+
+      document.querySelectorAll('[data-countdown-deadline]').forEach((el) => {
+        const deadline = Number(el.getAttribute('data-countdown-deadline'));
+        const diff = deadline - now;
+        el.textContent = formatRemainingCountdown(diff);
+      });
+    }
     function getStatusBadgeClass(status) {
       const map = {
         'Pending': 'bg-stone-100 text-stone-700 border-stone-200',
@@ -1852,6 +1904,9 @@ function saveToStorage(key, value) {
         paymentMethod,
         paymentProofImage: '',
         status: 'Waiting for Payment',
+        status: 'Waiting for Payment',
+        paymentDeadline: new Date(now.getTime() + PAYMENT_TIMEOUT_MS).toISOString(),
+        createdAt: now.toISOString(),
         createdAt: now.toISOString(),
         updatedAt: now.toISOString()
       };
@@ -1893,6 +1948,10 @@ function saveToStorage(key, value) {
         `;
       }
 
+      const deadlineMs = getOrderPaymentDeadline(order);
+      const remainingMs = deadlineMs - Date.now();
+      const isExpired = order.status === 'Cancelled' || (order.status === 'Waiting for Payment' && remainingMs <= 0);
+
       const method = tempPaymentMethod || order.paymentMethod || 'QRIS';
       const proof = tempProofDataUrl || order.paymentProofImage || '';
       const payCfg = state.settings.payments?.[method] || {};
@@ -1913,73 +1972,105 @@ function saveToStorage(key, value) {
               </div>
             </div>
 
-            <!-- PILIH METODE PEMBAYARAN -->
-            <div class="space-y-2.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Pilih Metode Pembayaran</label>
-              <div class="grid grid-cols-3 gap-3">
-                ${[
-                  { id: 'QRIS', icon: 'qr-code' },
-                  { id: 'DANA', icon: 'wallet' },
-                  { id: 'SeaBank', icon: 'building-2' }
-                ].map(m => `
-                  <button type="button" onclick="selectPaymentMethod('${m.id}')" class="p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 font-bold text-sm transition-all ${
-                    method === m.id ? 'border-[#2d5a3c] bg-[#e6efe6] text-[#2d5a3c] ring-1 ring-[#2d5a3c]' : 'border-[#d5e3d6] bg-white text-[#43574a]'
-                  }">
-                    <i data-lucide="${m.icon}" class="w-5 h-5"></i>
-                    <span>${m.id}</span>
-                  </button>
-                `).join('')}
+            <!-- KOTAK BATAS WAKTU PEMBAYARAN 1 JAM -->
+            ${isExpired ? `
+              <div class="p-5 rounded-2xl bg-red-50 border border-red-200 text-[#d94e4e] flex items-start gap-3">
+                <i data-lucide="x-circle" class="w-6 h-6 shrink-0 mt-0.5"></i>
+                <div class="space-y-1">
+                  <p class="font-extrabold text-sm">Pesanan Dibatalkan Otomatis (Waktu Habis)</p>
+                  <p class="text-xs text-red-800 leading-relaxed">Batas waktu pembayaran selama 1 jam telah berakhir. Silakan buat pesanan baru dari katalog jika masih ingin melanjutkan.</p>
+                </div>
               </div>
-            </div>
+            ` : order.status === 'Waiting for Payment' ? `
+              <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 text-amber-900">
+                  <i data-lucide="clock" class="w-5 h-5 text-amber-600 shrink-0"></i>
+                  <div>
+                    <p class="text-xs font-extrabold">Selesaikan Pembayaran Dalam 1 Jam</p>
+                    <p class="text-[11px] text-amber-800">Pesanan otomatis dibatalkan jika melewati batas waktu.</p>
+                  </div>
+                </div>
+                <div class="px-3.5 py-2 rounded-xl bg-amber-600 text-white font-mono font-extrabold text-base tracking-wider" data-countdown-deadline="${deadlineMs}">
+                  ${formatRemainingCountdown(remainingMs)}
+                </div>
+              </div>
+            ` : ''}
 
-            <!-- INFORMASI REKENING / QRIS TANPA DATA FIKTIF -->
-            <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
-              <h3 class="font-bold text-sm text-[#181f1a]">Informasi Pembayaran (${method})</h3>
-              ${method === 'QRIS' ? (
-                payCfg.qrisImage
-                  ? `<div class="text-center space-y-2">
-                      <img src="${payCfg.qrisImage}" alt="QRIS" class="max-h-64 mx-auto rounded-2xl border border-[#d5e3d6] bg-white p-2" />
-                      ${payCfg.merchantName ? `<p class="text-xs font-bold text-[#2d5a3c]">Merchant: ${escapeHtml(payCfg.merchantName)}</p>` : ''}
-                    </div>`
-                  : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                      Gambar QRIS belum diunggah oleh Admin di Pengaturan Pembayaran. Silakan pilih metode lain atau konfirmasi via WhatsApp <strong>${escapeHtml(s.whatsappNumber)}</strong>.
-                    </div>`
-              ) : (
-                payCfg.accountNumber
-                  ? `<div class="space-y-1">
-                      <p class="text-xs text-[#4e6355]">Nomor Tujuan ${method}:</p>
-                      <p class="text-xl font-extrabold text-[#181f1a] select-all">${escapeHtml(payCfg.accountNumber)}</p>
-                      ${payCfg.accountName ? `<p class="text-xs font-semibold text-[#2d5a3c]">Atas Nama: ${escapeHtml(payCfg.accountName)}</p>` : ''}
-                    </div>`
-                  : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                      Nomor rekening/akun ${method} belum diisi oleh Admin. Silakan hubungi WhatsApp resmi <strong>${escapeHtml(s.whatsappNumber)}</strong> untuk instruksi transfer.
-                    </div>`
-              )}
-            </div>
+            ${!isExpired ? `
+              <!-- PILIH METODE PEMBAYARAN -->
+              <div class="space-y-2.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Pilih Metode Pembayaran</label>
+                <div class="grid grid-cols-3 gap-3">
+                  ${[
+                    { id: 'QRIS', icon: 'qr-code' },
+                    { id: 'DANA', icon: 'wallet' },
+                    { id: 'SeaBank', icon: 'building-2' }
+                  ].map(m => `
+                    <button type="button" onclick="selectPaymentMethod('${m.id}')" class="p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 font-bold text-sm transition-all ${
+                      method === m.id ? 'border-[#2d5a3c] bg-[#e6efe6] text-[#2d5a3c] ring-1 ring-[#2d5a3c]' : 'border-[#d5e3d6] bg-white text-[#43574a]'
+                    }">
+                      <i data-lucide="${m.icon}" class="w-5 h-5"></i>
+                      <span>${m.id}</span>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
 
-            <!-- UPLOAD BUKTI TRANSFER -->
-            <div class="space-y-2.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Upload Bukti Transfer *</label>
-              <label class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-[#4a7c59] bg-[#f4f7f4] hover:bg-[#e6efe6] cursor-pointer transition-colors">
-                ${proof
-                  ? `<div class="text-center space-y-2">
-                      <img src="${proof}" alt="Bukti Transfer" class="max-h-48 mx-auto rounded-xl border border-[#d5e3d6]" />
-                      <span class="text-xs font-bold text-[#2d5a3c] block">Klik untuk mengganti gambar bukti</span>
-                    </div>`
-                  : `<div class="text-center space-y-1.5">
-                      <i data-lucide="upload" class="w-8 h-8 mx-auto text-[#4a7c59]"></i>
-                      <p class="text-sm font-bold text-[#181f1a]">Pilih atau Unggah Screenshot Bukti Pembayaran</p>
-                      <p class="text-xs text-[#4e6355]">Format JPG, PNG, atau WEBP</p>
-                    </div>`
-                }
-                <input type="file" accept="image/*" onchange="handlePaymentProofFile(this)" class="hidden" />
-              </label>
-            </div>
+              <!-- INFORMASI REKENING / QRIS -->
+              <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
+                <h3 class="font-bold text-sm text-[#181f1a]">Informasi Pembayaran (${method})</h3>
+                ${method === 'QRIS' ? (
+                  payCfg.qrisImage
+                    ? `<div class="text-center space-y-2">
+                        <img src="${payCfg.qrisImage}" alt="QRIS" class="max-h-64 mx-auto rounded-2xl border border-[#d5e3d6] bg-white p-2" />
+                        ${payCfg.merchantName ? `<p class="text-xs font-bold text-[#2d5a3c]">Merchant: ${escapeHtml(payCfg.merchantName)}</p>` : ''}
+                      </div>`
+                    : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                        Gambar QRIS belum diunggah oleh Admin di Pengaturan Pembayaran. Silakan pilih metode lain atau konfirmasi via WhatsApp <strong>${escapeHtml(s.whatsappNumber)}</strong>.
+                      </div>`
+                ) : (
+                  payCfg.accountNumber
+                    ? `<div class="space-y-1">
+                        <p class="text-xs text-[#4e6355]">Nomor Tujuan ${method}:</p>
+                        <p class="text-xl font-extrabold text-[#181f1a] select-all">${escapeHtml(payCfg.accountNumber)}</p>
+                        ${payCfg.accountName ? `<p class="text-xs font-semibold text-[#2d5a3c]">Atas Nama: ${escapeHtml(payCfg.accountName)}</p>` : ''}
+                      </div>`
+                    : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                        Nomor rekening/akun ${method} belum diisi oleh Admin. Silakan hubungi WhatsApp resmi <strong>${escapeHtml(s.whatsappNumber)}</strong> untuk instruksi transfer.
+                      </div>`
+                )}
+              </div>
+
+              <!-- UPLOAD BUKTI TRANSFER -->
+              <div class="space-y-2.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Upload Bukti Transfer *</label>
+                <label class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-[#4a7c59] bg-[#f4f7f4] hover:bg-[#e6efe6] cursor-pointer transition-colors">
+                  ${proof
+                    ? `<div class="text-center space-y-2">
+                        <img src="${proof}" alt="Bukti Transfer" class="max-h-48 mx-auto rounded-xl border border-[#d5e3d6]" />
+                        <span class="text-xs font-bold text-[#2d5a3c] block">Klik untuk mengganti gambar bukti</span>
+                      </div>`
+                    : `<div class="text-center space-y-1.5">
+                        <i data-lucide="upload" class="w-8 h-8 mx-auto text-[#4a7c59]"></i>
+                        <p class="text-sm font-bold text-[#181f1a]">Pilih atau Unggah Screenshot Bukti Pembayaran</p>
+                        <p class="text-xs text-[#4e6355]">Format JPG, PNG, atau WEBP</p>
+                      </div>`
+                  }
+                  <input type="file" accept="image/*" onchange="handlePaymentProofFile(this)" class="hidden" />
+                </label>
+              </div>
+            ` : ''}
 
             <div class="flex flex-col sm:flex-row gap-3 pt-2">
-              <button type="button" onclick="confirmOrderPayment('${order.id}')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
-                Konfirmasi Pembayaran
-              </button>
+              ${!isExpired ? `
+                <button type="button" onclick="confirmOrderPayment('${order.id}')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+                  Konfirmasi Pembayaran
+                </button>
+              ` : `
+                <button type="button" onclick="navigateToCategory('all')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+                  Pesan Ulang di Katalog
+                </button>
+              `}
               <button type="button" onclick="navigateTo('orders')" class="px-5 py-3.5 rounded-xl border border-[#d5e3d6] text-[#43574a] font-bold text-sm hover:bg-[#f4f7f4]">
                 Ke Halaman Pesanan
               </button>
@@ -1988,7 +2079,6 @@ function saveToStorage(key, value) {
         </div>
       `;
     }
-
     function selectPaymentMethod(method) {
       tempPaymentMethod = method;
       renderApp();
@@ -2095,9 +2185,15 @@ function confirmOrderPayment(orderId) {
 
                   <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
                     ${o.status === 'Waiting for Payment' ? `
-                      <button onclick="openPaymentForOrder('${o.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">
-                        Bayar / Upload Bukti Transfer
-                      </button>
+                      <div class="flex flex-wrap items-center gap-2.5">
+                        <button onclick="openPaymentForOrder('${o.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">
+                          Bayar / Upload Bukti Transfer
+                        </button>
+                        <span class="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5">
+                          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                          <span>Sisa waktu: <strong class="font-mono" data-countdown-deadline="${getOrderPaymentDeadline(o)}">${formatRemainingCountdown(getOrderPaymentDeadline(o) - Date.now())}</strong></span>
+                        </span>
+                      </div>
                     ` : ''}
                     <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin konfirmasi pesanan *${o.orderNumber}* atas nama *${o.customerName}*.`)}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#d5e3d6] hover:bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold ml-auto">
                       <i data-lucide="phone" class="w-3.5 h-3.5"></i>
@@ -3463,18 +3559,20 @@ service cloud.firestore {
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-  if (window.firebase && firebase.auth) {
-    firebase.auth().onAuthStateChanged((user) => {
-      state.adminAuth.isAuthenticated = Boolean(user);
-      if (user) state.adminAuth.email = user.email;
-      saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+      if (window.firebase && firebase.auth) {
+        firebase.auth().onAuthStateChanged((user) => {
+          state.adminAuth.isAuthenticated = Boolean(user);
+          if (user) state.adminAuth.email = user.email;
+          saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+          renderApp();
+        });
+      }
+      checkAndExpireUnpaidOrders();
+      setInterval(checkAndExpireUnpaidOrders, 1000);
       renderApp();
+      initRealtimeFirestoreSync();
+      checkAdminRedirectRoute();
     });
-  }
-  renderApp();
-  initRealtimeFirestoreSync();
-  checkAdminRedirectRoute();
-});
 
   </script>
 </body>
