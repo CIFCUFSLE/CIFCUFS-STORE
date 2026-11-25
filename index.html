@@ -1018,10 +1018,12 @@
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
+        return String(str)
+  .replace(/&/g, '&')
+  .replace(/</g, '<')
+  .replace(/>/g, '>')
+  .replace(/"/g, '"')
+  .replace(/'/g, ''');
         .replace(/'/g, ''');
     }
 
