@@ -6,10 +6,10 @@
   <title>CIFCUFS STORE </title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <!-- Google Fonts: Oxanium & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oxanium:wght@600;700;800&display=swap" rel="stylesheet" />
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Firebase Compat SDK (Firestore Realtime & Auth) -->
@@ -22,7 +22,7 @@
         extend: {
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
-            display: ['Plus Jakarta Sans', 'sans-serif'],
+            display: ['Oxanium', 'sans-serif'],
           },
           colors: {
             cyber: {
@@ -62,14 +62,54 @@
       background-color: var(--bg-main) !important;
       color: var(--text-primary) !important;
       font-family: 'Inter', sans-serif;
+      font-weight: 400;
       background-image:
         radial-gradient(circle at 15% 0%, rgba(113, 56, 212, 0.14) 0%, transparent 42%),
         radial-gradient(circle at 85% 18%, rgba(135, 59, 250, 0.10) 0%, transparent 45%);
       background-attachment: fixed;
     }
 
-    h1, h2, h3, .font-heading {
-      font-family: 'Plus Jakarta Sans', sans-serif;
+    /* =======================================================================
+       TYPOGRAPHY SYSTEM: OXANIUM (DISPLAY/UI/PRICE) & INTER (BODY/DETAIL)
+    ======================================================================== */
+    h1, h2, h3, h4,
+    .font-heading,
+    .font-oxanium,
+    .store-logo-text,
+    .product-title,
+    .price-display {
+      font-family: 'Oxanium', sans-serif !important;
+    }
+
+    h1 {
+      font-weight: 800 !important;
+    }
+
+    h2, h3, h4,
+    .store-logo-text,
+    .product-title,
+    .price-display {
+      font-weight: 700 !important;
+    }
+
+    header nav button,
+    #main-navbar button,
+    button,
+    a.rounded-xl,
+    a.rounded-2xl {
+      font-family: 'Oxanium', sans-serif;
+      font-weight: 600;
+    }
+
+    p,
+    input,
+    select,
+    textarea,
+    .font-inter,
+    .order-detail-meta,
+    .payment-info-text {
+      font-family: 'Inter', sans-serif !important;
+      font-weight: 400;
     }
 
     .no-scrollbar::-webkit-scrollbar {
@@ -352,12 +392,14 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 max-w-sm pointer-events-none"></div>
 
   <!-- ========================================================================
-       JAVASCRIPT ENGINE: GALEYN STORE (VANILLA JS + LOCALSTORAGE + FIREBASE READY)
+       JAVASCRIPT ENGINE: CIFCUFS STORE (VANILLA JS + LOCALSTORAGE + FIREBASE READY)
   ========================================================================= -->
   <script>
     // =========================================================================
     // 1. DATA KATALOG & KONFIGURASI DEFAULT (HARGA NULL = BELUM TERSEDIA)
     // =========================================================================
+    const SERVICE_FEE_IDR = 100; // Fee Layanan tetap Rp100 per pesanan
+
     const STORAGE_KEYS = {
       CATEGORIES: 'galeyn_categories_v1',
       PRODUCTS: 'galeyn_products_v1',
@@ -786,24 +828,24 @@
     // 2. STATE GLOBAL & PERSISTENSI LOCALSTORAGE
     // =========================================================================
     function loadFromStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return JSON.parse(JSON.stringify(fallback));
-    return JSON.parse(raw);
-  } catch (e) {
-    return JSON.parse(JSON.stringify(fallback));
-  }
-}
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return JSON.parse(JSON.stringify(fallback));
+        return JSON.parse(raw);
+      } catch (e) {
+        return JSON.parse(JSON.stringify(fallback));
+      }
+    }
 
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.warn('Penyimpanan lokal penuh:', e);
-  }
-}
+    function saveToStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) {
+        console.warn('Penyimpanan lokal penuh:', e);
+      }
+    }
 
-   const state = {
+    const state = {
       categories: loadFromStorage(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES),
       products: loadFromStorage(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS),
       orders: loadFromStorage(STORAGE_KEYS.ORDERS, []),
@@ -829,7 +871,7 @@ function saveToStorage(key, value) {
       reviewRatingInput: 5
     };
 
-// =========================================================================
+    // =========================================================================
     // KONEKSI REAL-TIME KE CLOUD FIRESTORE (FIREBASE)
     // =========================================================================
     const firebaseConfig = {
@@ -852,15 +894,32 @@ function saveToStorage(key, value) {
       console.error('Gagal inisialisasi Firebase:', err);
     }
 
+    function normalizeFirestoreTimestamp(ts) {
+      if (!ts) return null;
+      if (typeof ts.toDate === 'function') return ts.toDate().toISOString();
+      if (typeof ts.seconds === 'number') return new Date(ts.seconds * 1000).toISOString();
+      return ts;
+    }
+
     function initRealtimeFirestoreSync() {
       if (!firestoreDB) return;
 
       // 1. Sinkronisasi Real-Time Pesanan (Orders)
       firestoreDB.collection('orders').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
-        const cloudOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const cloudOrders = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const createdIso = normalizeFirestoreTimestamp(data.serverCreatedAt) || normalizeFirestoreTimestamp(data.createdAt);
+          const paidIso = normalizeFirestoreTimestamp(data.serverPaidAt) || normalizeFirestoreTimestamp(data.paidAt) || null;
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: createdIso || data.createdAt,
+            paidAt: paidIso
+          };
+        });
         state.orders = cloudOrders;
         saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
-        if (state.activePage === 'orders' || state.activePage === 'admin') {
+        if (state.activePage === 'orders' || state.activePage === 'payment' || state.activePage === 'admin') {
           renderApp();
         }
       });
@@ -899,7 +958,12 @@ function saveToStorage(key, value) {
     async function saveOrderToDB(orderObj) {
       if (!firestoreDB) return;
       try {
-        await firestoreDB.collection('orders').doc(orderObj.id).set(orderObj);
+        const payload = {
+          ...orderObj,
+          serverCreatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await firestoreDB.collection('orders').doc(orderObj.id).set(payload);
       } catch (err) {
         console.error('Gagal menyimpan pesanan ke Firebase:', err);
       }
@@ -908,7 +972,14 @@ function saveToStorage(key, value) {
     async function updateOrderInDB(orderId, partialData) {
       if (!firestoreDB) return;
       try {
-        await firestoreDB.collection('orders').doc(orderId).update(partialData);
+        const payload = {
+          ...partialData,
+          serverUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (partialData.status === 'Paid') {
+          payload.serverPaidAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+        await firestoreDB.collection('orders').doc(orderId).update(payload);
       } catch (err) {
         console.error('Gagal update pesanan di Firebase:', err);
       }
@@ -942,16 +1013,16 @@ function saveToStorage(key, value) {
     }
 
     // =========================================================================
-    // 3. HELPER FORMAT & LOGIKA HARGA
+    // 3. HELPER FORMAT, FEE LAYANAN Rp100, TIMESTAMP WIB & LOGIKA HARGA
     // =========================================================================
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
     }
 
     function formatRupiah(amount) {
@@ -964,6 +1035,100 @@ function saveToStorage(key, value) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
       }).format(Number(amount));
+    }
+
+    // Perhitungan terpusat: Harga Produk + Fee Layanan tetap Rp100
+    function calculateOrderTotals(items) {
+      const subtotalAmount = (items || []).reduce((sum, item) => {
+        const lineTotal = item.subtotal !== undefined
+          ? Number(item.subtotal)
+          : Number(item.unitPrice || 0) * Number(item.quantity || 1);
+        return sum + lineTotal;
+      }, 0);
+      const serviceFee = subtotalAmount > 0 ? SERVICE_FEE_IDR : 0;
+      const totalAmount = subtotalAmount + serviceFee;
+      return { subtotalAmount, serviceFee, totalAmount };
+    }
+
+    function getOrderFinancialBreakdown(order) {
+      if (!order) return { subtotalAmount: 0, serviceFee: SERVICE_FEE_IDR, totalAmount: 0 };
+      const itemsSum = (order.items || []).reduce((s, it) => s + Number(it.subtotal || (it.unitPrice * it.quantity) || 0), 0);
+      const serviceFee = order.serviceFee !== undefined ? Number(order.serviceFee) : SERVICE_FEE_IDR;
+      const subtotalAmount = order.subtotalAmount !== undefined
+        ? Number(order.subtotalAmount)
+        : (itemsSum > 0 ? itemsSum : Math.max(0, Number(order.totalAmount || 0) - serviceFee));
+      const totalAmount = order.totalAmount !== undefined
+        ? Number(order.totalAmount)
+        : subtotalAmount + serviceFee;
+      return { subtotalAmount, serviceFee, totalAmount };
+    }
+
+    // Format Tanggal Indonesia (Contoh: 25 November 2026) dalam zona waktu Asia/Jakarta (WIB)
+    function formatOrderDateID(isoInput) {
+      if (!isoInput) return '-';
+      const dateObj = typeof isoInput?.toDate === 'function' ? isoInput.toDate() : new Date(isoInput);
+      if (isNaN(dateObj.getTime())) return '-';
+      return new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
+      }).format(dateObj);
+    }
+
+    // Format Waktu WIB 24-jam (Contoh: 14:35 WIB) dalam zona waktu Asia/Jakarta
+    function formatOrderTimeWIB(isoInput) {
+      if (!isoInput) return '-';
+      const dateObj = typeof isoInput?.toDate === 'function' ? isoInput.toDate() : new Date(isoInput);
+      if (isNaN(dateObj.getTime())) return '-';
+      const parts = new Intl.DateTimeFormat('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Jakarta'
+      }).formatToParts(dateObj);
+      const hour = parts.find(p => p.type === 'hour')?.value || '00';
+      const minute = parts.find(p => p.type === 'minute')?.value || '00';
+      return `${hour}:${minute} WIB`;
+    }
+
+    // Validasi status verifikasi pembayaran sebelum menampilkan Tanggal Pembayaran
+    function isOrderPaymentVerified(order) {
+      if (!order) return false;
+      const verifiedStatuses = ['Paid', 'In Progress', 'Revision', 'Completed'];
+      return verifiedStatuses.includes(order.status) && Boolean(order.paidAt || order.serverPaidAt);
+    }
+
+    function renderOrderTimestampRows(order) {
+      const createdSource = order.serverCreatedAt || order.createdAt;
+      const orderDateStr = formatOrderDateID(createdSource);
+      const orderTimeStr = formatOrderTimeWIB(createdSource);
+      const verified = isOrderPaymentVerified(order);
+      const paidSource = order.serverPaidAt || order.paidAt;
+
+      return `
+        <div class="order-detail-meta space-y-1.5 text-xs">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[#4e6355]">Tanggal Pesanan:</span>
+            <span class="font-semibold text-[#181f1a]">${escapeHtml(orderDateStr)}</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[#4e6355]">Waktu Pesanan:</span>
+            <span class="font-semibold text-[#181f1a]">${escapeHtml(orderTimeStr)}</span>
+          </div>
+          ${verified ? `
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[#4e6355]">Tanggal Pembayaran:</span>
+              <span class="font-semibold text-emerald-700">${escapeHtml(formatOrderDateID(paidSource))}</span>
+            </div>
+          ` : `
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[#4e6355]">Status Pembayaran:</span>
+              <span class="font-semibold text-amber-800">Menunggu Pembayaran</span>
+            </div>
+          `}
+        </div>
+      `;
     }
 
     function getVariantEffectivePrice(variant) {
@@ -981,7 +1146,8 @@ function saveToStorage(key, value) {
       if (valid.length === 0) return null;
       return Math.min(...valid);
     }
-const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 menit)
+
+    const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 menit)
 
     function getOrderPaymentDeadline(order) {
       if (!order) return 0;
@@ -1034,6 +1200,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
         el.textContent = formatRemainingCountdown(diff);
       });
     }
+
     function getStatusBadgeClass(status) {
       const map = {
         'Pending': 'bg-stone-100 text-stone-700 border-stone-200',
@@ -1069,24 +1236,24 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
     }
 
     function readImageFileAsDataUrl(file, callback) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 800;
-      const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      callback(canvas.toDataURL('image/jpeg', 0.75));
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          callback(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
 
     // =========================================================================
     // 4. RENDER HEADER, NAVBAR & FOOTER
@@ -1119,11 +1286,11 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
           <button onclick="navigateTo('home')" class="flex items-center gap-3 text-left group focus:outline-none">
             ${s.logoImage
               ? `<img src="${s.logoImage}" alt="${escapeHtml(s.storeName)}" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover border border-[#d5e3d6]" />`
-              : `<div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#2d5a3c] to-[#4a7c59] text-white font-extrabold text-lg flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">G</div>`
+              : `<div class="store-logo-text w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#2d5a3c] to-[#4a7c59] text-white font-bold text-lg flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">C</div>`
             }
             <div>
-              <span class="block font-extrabold text-base sm:text-lg tracking-tight text-[#181f1a] leading-none">${escapeHtml(s.storeName)}</span>
-              <span class="block text-[11px] font-semibold text-[#4a7c59] mt-1">${escapeHtml(s.tagline)}</span>
+              <span class="store-logo-text block font-bold text-base sm:text-lg tracking-tight text-[#181f1a] leading-none">${escapeHtml(s.storeName)}</span>
+              <span class="block text-[11px] font-semibold text-[#4a7c59] mt-1 font-inter">${escapeHtml(s.tagline)}</span>
             </div>
           </button>
 
@@ -1159,9 +1326,9 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               ${cartCount > 0 ? `<span class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-[#2d5a3c] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">${cartCount}</span>` : ''}
             </button>
 
-          <!-- ADMIN BUTTON (HANYA MUNCUL JIKA SUDAH LOGIN ADMIN) -->
+            <!-- ADMIN BUTTON (HANYA MUNCUL JIKA SUDAH LOGIN ADMIN) -->
             ${state.adminAuth.isAuthenticated
-              ? `<button onclick="navigateTo('admin')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
+              ? `<button onclick="navigateTo('admin')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs ${
                   state.activePage === 'admin' ? 'bg-[#181f1a] text-white' : 'bg-[#4a7c59] text-white hover:bg-[#2d5a3c]'
                 }">
                   <i data-lucide="shield-check" class="w-4 h-4"></i>
@@ -1203,10 +1370,10 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <div class="flex items-center gap-3">
                 ${s.logoImage
                   ? `<img src="${s.logoImage}" alt="Logo" class="w-10 h-10 rounded-xl object-cover" />`
-                  : `<div class="w-10 h-10 rounded-xl bg-[#4a7c59] text-white font-extrabold flex items-center justify-center text-lg">G</div>`
+                  : `<div class="store-logo-text w-10 h-10 rounded-xl bg-[#4a7c59] text-white font-bold flex items-center justify-center text-lg">C</div>`
                 }
                 <div>
-                  <h3 class="font-bold text-white text-lg">${escapeHtml(s.storeName)}</h3>
+                  <h3 class="store-logo-text font-bold text-white text-lg">${escapeHtml(s.storeName)}</h3>
                   <p class="text-xs text-[#95c7a3]">${escapeHtml(s.tagline)}</p>
                 </div>
               </div>
@@ -1243,7 +1410,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <p class="text-xs sm:text-sm text-[#b3c7b8]">
                 Konsultasi paket, layanan custom, atau konfirmasi pembayaran langsung ke admin kami:
               </p>
-              <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent('Halo Admin CIFCUFS STORE')}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#4a7c59] hover:bg-[#5c946d] text-white font-bold text-xs sm:text-sm transition-all shadow-sm">
+              <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent('Halo Admin CIFCUFS STORE')}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#4a7c59] hover:bg-[#5c946d] text-white font-semibold text-xs sm:text-sm transition-all shadow-sm">
                 <i data-lucide="phone" class="w-4 h-4"></i>
                 <span>WhatsApp: ${escapeHtml(s.whatsappNumber)}</span>
               </a>
@@ -1273,7 +1440,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
         },
         {
           q: 'Apakah layanan Kebutuhan Social Media aman dan bebas bot?',
-          a: 'Ya. Kami hanya menjalankan promosi dan distribusi audiens sesuai ketentuan platform—tanpa menggunakan bot, akun palsu, atau fake engagement.'
+          a: 'Ya. Kami hanya menjalankan promosi dan distribusi audiens sesuai ketentuan platform—tanpa menggunakan bot, akun palsu, atau engagement palsu.'
         },
         {
           q: 'Bagaimana kebijakan etika untuk kategori Jasa Tugas?',
@@ -1313,7 +1480,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                     Temukan layanan streaming, musik, AI produktivitas, tools editing profesional, pertumbuhan media sosial organik sesuai ketentuan platform, hingga jasa desain & pendampingan tugas terpercaya.
                   </p>
                   <div class="flex flex-wrap items-center gap-3.5 pt-2">
-                    <button onclick="navigateToCategory('all')" class="px-6 py-3.5 rounded-xl bg-[#4a7c59] hover:bg-[#5b946c] text-white font-bold text-sm inline-flex items-center gap-2 shadow-lg transition-all">
+                    <button onclick="navigateToCategory('all')" class="px-6 py-3.5 rounded-xl bg-[#4a7c59] hover:bg-[#5b946c] text-white font-semibold text-sm inline-flex items-center gap-2 shadow-lg transition-all">
                       <span>Jelajahi Katalog</span>
                       <i data-lucide="arrow-right" class="w-4 h-4"></i>
                     </button>
@@ -1323,15 +1490,15 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   </div>
                   <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/10 max-w-md">
                     <div>
-                      <p class="text-2xl font-extrabold">6</p>
+                      <p class="price-display text-2xl font-bold">6</p>
                       <p class="text-xs text-[#b6dec1]">Kategori Utama</p>
                     </div>
                     <div>
-                      <p class="text-2xl font-extrabold">${state.products.filter(p => p.active).length}+</p>
+                      <p class="price-display text-2xl font-bold">${state.products.filter(p => p.active).length}+</p>
                       <p class="text-xs text-[#b6dec1]">Produk & Jasa</p>
                     </div>
                     <div>
-                      <p class="text-2xl font-extrabold">8</p>
+                      <p class="price-display text-2xl font-bold">8</p>
                       <p class="text-xs text-[#b6dec1]">Tahap Pelacakan</p>
                     </div>
                   </div>
@@ -1341,7 +1508,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl">
                     <div class="flex items-center justify-between">
                       <span class="text-xs font-bold uppercase tracking-wider text-[#b6dec1]">Ekosistem Digital CIFCUFS</span>
-                      <span class="px-2.5 py-1 rounded-full bg-[#4a7c59] text-white text-[11px] font-bold">${escapeHtml(s.storeName)}</span>
+                      <span class="store-logo-text px-2.5 py-1 rounded-full bg-[#4a7c59] text-white text-[11px] font-bold">${escapeHtml(s.storeName)}</span>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                       ${state.categories.map(cat => `
@@ -1349,7 +1516,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                           <div class="w-8 h-8 rounded-lg bg-[#4a7c59]/30 text-[#95d1a6] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                             <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
                           </div>
-                          <p class="font-bold text-xs text-white line-clamp-1">${escapeHtml(cat.name)}</p>
+                          <p class="product-title font-bold text-xs text-white line-clamp-1">${escapeHtml(cat.name)}</p>
                           <p class="text-[11px] text-[#a3bda9] mt-0.5">${state.products.filter(p => p.categoryId === cat.id && p.active).length} Layanan</p>
                         </button>
                       `).join('')}
@@ -1365,9 +1532,9 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
             <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
               <div>
                 <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Eksplorasi Kategori</span>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">6 Kategori Katalog Utama</h2>
+                <h2 class="text-2xl sm:text-3xl font-bold text-[#181f1a] mt-1">6 Kategori Katalog Utama</h2>
               </div>
-              <button onclick="navigateToCategory('all')" class="text-sm font-bold text-[#2d5a3c] hover:text-[#4a7c59] inline-flex items-center gap-1">
+              <button onclick="navigateToCategory('all')" class="text-sm font-semibold text-[#2d5a3c] hover:text-[#4a7c59] inline-flex items-center gap-1">
                 <span>Semua Katalog</span>
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </button>
@@ -1388,7 +1555,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                       <h3 class="text-lg font-bold text-[#181f1a] group-hover:text-[#2d5a3c]">${escapeHtml(cat.name)}</h3>
                       <p class="text-xs sm:text-sm text-[#4e6355] mt-1.5 leading-relaxed">${escapeHtml(cat.description)}</p>
                     </div>
-                    <div class="mt-5 pt-3.5 border-t border-[#eef4ef] flex items-center justify-between text-xs font-bold text-[#2d5a3c]">
+                    <div class="mt-5 pt-3.5 border-t border-[#eef4ef] flex items-center justify-between text-xs font-semibold text-[#2d5a3c]">
                       <span>Buka Halaman Kategori</span>
                       <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
                     </div>
@@ -1403,9 +1570,9 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
             <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-3">
               <div>
                 <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Pilihan Populer</span>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">Produk & Layanan Unggulan</h2>
+                <h2 class="text-2xl sm:text-3xl font-bold text-[#181f1a] mt-1">Produk & Layanan Unggulan</h2>
               </div>
-              <button onclick="navigateToCategory('all')" class="text-sm font-bold text-[#2d5a3c] hover:text-[#4a7c59] inline-flex items-center gap-1">
+              <button onclick="navigateToCategory('all')" class="text-sm font-semibold text-[#2d5a3c] hover:text-[#4a7c59] inline-flex items-center gap-1">
                 <span>Lihat Seluruh Produk</span>
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </button>
@@ -1423,14 +1590,14 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">
                   Customer Reviews
                 </span>
-                <h2 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">
+                <h2 class="text-2xl sm:text-3xl font-bold text-[#181f1a] mt-1">
                   Apa Kata Pelanggan Kami?
                 </h2>
                 <p class="text-sm text-[#647568] mt-1">
                   Ulasan asli dari pelanggan yang telah menggunakan layanan CIFCUFS STORE.
                 </p>
               </div>
-              <button onclick="openWriteReviewModal()" class="px-5 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 shadow-xs self-start sm:self-auto transition-all">
+              <button onclick="openWriteReviewModal()" class="px-5 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 shadow-xs self-start sm:self-auto transition-all">
                 <i data-lucide="message-square-plus" class="w-4 h-4"></i>
                 <span>Tulis Ulasan</span>
               </button>
@@ -1441,11 +1608,11 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <div class="w-12 h-12 mx-auto rounded-2xl bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center">
                   <i data-lucide="star" class="w-6 h-6"></i>
                 </div>
-                <p class="font-bold text-base text-[#181f1a]">Belum ada ulasan pelanggan</p>
+                <p class="product-title font-bold text-base text-[#181f1a]">Belum ada ulasan pelanggan</p>
                 <p class="text-xs sm:text-sm text-[#4e6355] max-w-md mx-auto">
                   Sudah pernah memesan di CIFCUFS STORE? Jadilah yang pertama membagikan pengalaman Anda!
                 </p>
-                <button onclick="openWriteReviewModal()" class="px-5 py-2.5 rounded-xl bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-bold transition-colors">
+                <button onclick="openWriteReviewModal()" class="px-5 py-2.5 rounded-xl bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-semibold transition-colors">
                   Kirim Ulasan Pertama
                 </button>
               </div>
@@ -1472,7 +1639,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
 
                     <div class="flex items-center justify-between gap-3 pt-4 border-t border-[#eef4ef]">
                       <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-full bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center font-extrabold text-sm shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center font-bold text-sm shrink-0">
                           ${escapeHtml((rev.name || 'P').charAt(0).toUpperCase())}
                         </div>
                         <div class="min-w-0">
@@ -1485,7 +1652,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                         </div>
                       </div>
                       <span class="text-[10px] text-[#718174] shrink-0">
-                        ${rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('id-ID') : ''}
+                        ${rev.createdAt ? formatOrderDateID(rev.createdAt) : ''}
                       </span>
                     </div>
                   </div>
@@ -1498,18 +1665,18 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
           <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-8">
               <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">FAQ</span>
-              <h2 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">Pertanyaan yang Sering Diajukan</h2>
+              <h2 class="text-2xl sm:text-3xl font-bold text-[#181f1a] mt-1">Pertanyaan yang Sering Diajukan</h2>
             </div>
             <div class="space-y-3">
               ${faqs.map((f, i) => {
                 const isOpen = state.openFaqIndex === i;
                 return `
                   <div class="bg-white border border-[#d5e3d6] rounded-2xl overflow-hidden">
-                    <button onclick="toggleFaq(${i})" class="w-full px-6 py-4 text-left flex items-center justify-between gap-4 font-bold text-sm sm:text-base text-[#181f1a] hover:bg-[#f4f7f4]">
+                    <button onclick="toggleFaq(${i})" class="w-full px-6 py-4 text-left flex items-center justify-between gap-4 font-semibold text-sm sm:text-base text-[#181f1a] hover:bg-[#f4f7f4]">
                       <span>${escapeHtml(f.q)}</span>
                       <i data-lucide="chevron-down" class="w-5 h-5 text-[#4a7c59] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}"></i>
                     </button>
-                    ${isOpen ? `<div class="px-6 pb-5 pt-3 border-t border-[#eef4ef] text-xs sm:text-sm text-[#4e6355] leading-relaxed">${escapeHtml(f.a)}</div>` : ''}
+                    ${isOpen ? `<div class="px-6 pb-5 pt-3 border-t border-[#eef4ef] text-xs sm:text-sm text-[#4e6355] leading-relaxed"><p>${escapeHtml(f.a)}</p></div>` : ''}
                   </div>
                 `;
               }).join('')}
@@ -1534,7 +1701,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                     <div class="w-14 h-14 mx-auto rounded-2xl bg-[#2d5a3c] text-white flex items-center justify-center shadow-sm mb-2">
                       <i data-lucide="${cat?.icon || 'layers'}" class="w-7 h-7"></i>
                     </div>
-                    <span class="text-xs font-extrabold tracking-widest uppercase text-[#2d5a3c]">${escapeHtml(product.name)}</span>
+                    <span class="product-title text-xs font-bold tracking-widest uppercase text-[#2d5a3c]">${escapeHtml(product.name)}</span>
                   </div>`
               }
               <div class="absolute top-3 left-3">
@@ -1545,7 +1712,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
             </div>
 
             <div class="p-5">
-              <h3 class="font-extrabold text-lg text-[#181f1a] group-hover:text-[#2d5a3c] transition-colors">${escapeHtml(product.name)}</h3>
+              <h3 class="product-title font-bold text-lg text-[#181f1a] group-hover:text-[#2d5a3c] transition-colors">${escapeHtml(product.name)}</h3>
               <p class="text-xs text-[#4e6355] mt-1.5 line-clamp-2 leading-relaxed">${escapeHtml(product.description)}</p>
               <div class="mt-3 flex flex-wrap gap-1.5">
                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#f4f7f4] text-[#354c3d] text-[11px] font-semibold">
@@ -1565,11 +1732,11 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
           <div class="px-5 pb-5 pt-3 border-t border-[#eef4ef] flex items-center justify-between gap-3">
             <div>
               <span class="block text-[11px] text-[#5e7365] font-medium">${startPrice ? 'Mulai dari' : 'Status Harga'}</span>
-              <span class="text-sm font-extrabold ${startPrice ? 'text-[#2d5a3c]' : 'text-[#d94e4e]'}">
+              <span class="price-display text-sm font-bold ${startPrice ? 'text-[#2d5a3c]' : 'text-[#d94e4e]'}">
                 ${formatRupiah(startPrice)}
               </span>
             </div>
-            <button onclick="openProductDetailModal('${product.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold transition-colors shrink-0">
+            <button onclick="openProductDetailModal('${product.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold transition-colors shrink-0">
               Pilih Variasi
             </button>
           </div>
@@ -1632,13 +1799,13 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
 
             <!-- TABS 6 KATEGORI -->
             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-6 mt-6 border-t border-[#eef4ef]">
-              <button onclick="navigateToCategory('all')" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              <button onclick="navigateToCategory('all')" class="px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 state.selectedCategorySlug === 'all' ? 'bg-[#2d5a3c] text-white' : 'bg-[#f4f7f4] text-[#43574a] hover:bg-[#e6efe6]'
               }">
                 Semua (${state.products.filter(p => p.active).length})
               </button>
               ${state.categories.map(cat => `
-                <button onclick="navigateToCategory('${cat.slug}')" class="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${
+                <button onclick="navigateToCategory('${cat.slug}')" class="px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${
                   state.selectedCategorySlug === cat.slug ? 'bg-[#2d5a3c] text-white' : 'bg-[#f4f7f4] text-[#43574a] hover:bg-[#e6efe6]'
                 }">
                   <i data-lucide="${cat.icon}" class="w-3.5 h-3.5"></i>
@@ -1652,7 +1819,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <div class="mt-4 pt-4 border-t border-[#eef4ef] flex flex-wrap items-center gap-2">
                 <span class="text-xs font-bold text-[#43574a] mr-1">Subkategori:</span>
                 ${['all', 'Jasa Edit', 'Jasa Tugas'].map(sub => `
-                  <button onclick="setSubCategoryFilter('${sub}')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  <button onclick="setSubCategoryFilter('${sub}')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                     state.subCategoryFilter === sub ? 'bg-[#4a7c59] text-white' : 'bg-[#e6efe6] text-[#2d5a3c] hover:bg-[#d5e3d6]'
                   }">
                     ${sub === 'all' ? 'Semua Jasa' : sub}
@@ -1694,9 +1861,9 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
           <!-- PRODUCT GRID -->
           ${filtered.length === 0 ? `
             <div class="bg-white border border-[#d5e3d6] rounded-3xl p-12 text-center space-y-3">
-              <p class="text-lg font-bold text-[#181f1a]">Tidak ada produk yang cocok</p>
+              <p class="product-title text-lg font-bold text-[#181f1a]">Tidak ada produk yang cocok</p>
               <p class="text-xs text-[#4e6355]">Silakan ubah kata kunci pencarian atau reset filter kategori.</p>
-              <button onclick="resetCatalogFilters()" class="px-4 py-2 rounded-xl bg-[#2d5a3c] text-white text-xs font-bold">Reset Filter</button>
+              <button onclick="resetCatalogFilters()" class="px-4 py-2 rounded-xl bg-[#2d5a3c] text-white text-xs font-semibold">Reset Filter</button>
             </div>
           ` : `
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1789,7 +1956,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
               <div>
                 <span class="text-[11px] font-bold uppercase tracking-wider text-[#4a7c59]">${escapeHtml(product.subcategory || cat?.name || '')}</span>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">${escapeHtml(product.name)}</h2>
+                <h2 class="product-title text-xl font-bold text-[#181f1a]">${escapeHtml(product.name)}</h2>
               </div>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6] text-[#43574a]">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -1813,7 +1980,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">1. Pilih Tipe Paket / Plan</label>
                   <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     ${uniquePlans.map(plan => `
-                      <button type="button" onclick="selectModalPlan('${escapeHtml(plan).replace(/'/g, "\\'")}')" class="px-3.5 py-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
+                      <button type="button" onclick="selectModalPlan('${escapeHtml(plan).replace(/'/g, "\\'")}')" class="px-3.5 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all ${
                         modalVariantState.selectedPlan === plan
                           ? 'border-[#2d5a3c] bg-[#2d5a3c] text-white shadow-2xs'
                           : 'border-[#d5e3d6] bg-white text-[#181f1a] hover:border-[#4a7c59]'
@@ -1839,10 +2006,10 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                         selected ? 'border-[#2d5a3c] bg-[#e6efe6] ring-1 ring-[#2d5a3c]' : 'border-[#d5e3d6] bg-white hover:border-[#4a7c59]'
                       }">
                         <div>
-                          <p class="text-xs font-extrabold text-[#181f1a]">${escapeHtml(product.singleOptionMode ? v.plan : v.duration)}</p>
+                          <p class="product-title text-xs font-bold text-[#181f1a]">${escapeHtml(product.singleOptionMode ? v.plan : v.duration)}</p>
                           <p class="text-[11px] text-[#4e6355] mt-0.5">Stok: <strong class="${v.stock === 'Habis' ? 'text-[#d94e4e]' : 'text-[#2d5a3c]'}">${escapeHtml(v.stock || 'Tersedia')}</strong></p>
                         </div>
-                        <span class="text-xs font-extrabold ${vp ? 'text-[#2d5a3c]' : 'text-[#d94e4e]'}">${formatRupiah(vp)}</span>
+                        <span class="price-display text-xs font-bold ${vp ? 'text-[#2d5a3c]' : 'text-[#d94e4e]'}">${formatRupiah(vp)}</span>
                       </button>
                     `;
                   }).join('')}
@@ -1853,7 +2020,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               ${activeVariant && Number(activeVariant.extraFee) > 0 ? `
                 <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
                   <span>${escapeHtml(activeVariant.extraFeeNote || 'Biaya tambahan paket')}</span>
-                  <span class="font-bold">+${formatRupiah(activeVariant.extraFee)}</span>
+                  <span class="price-display font-bold">+${formatRupiah(activeVariant.extraFee)}</span>
                 </div>
               ` : ''}
 
@@ -1868,7 +2035,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <!-- FORM BRIEF PELANGGAN & UPLOAD REFERENSI UNTUK JASA EDIT / JASA TUGAS -->
               ${product.isService ? `
                 <div class="space-y-3.5 p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6]">
-                  <h4 class="text-xs font-extrabold uppercase tracking-wider text-[#2d5a3c]">Form Brief Layanan & File Referensi</h4>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Form Brief Layanan & File Referensi</h4>
                   <div>
                     <label class="block text-xs font-semibold mb-1">Instruksi / Brief Kebutuhan</label>
                     <textarea rows="3" oninput="modalVariantState.briefDescription = this.value" placeholder="Tuliskan detail instruksi, tema desain, atau topik materi yang ingin dikonsultasikan..." class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs sm:text-sm focus:border-[#4a7c59] focus:outline-none">${escapeHtml(modalVariantState.briefDescription)}</textarea>
@@ -1880,7 +2047,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                     </div>
                     <div>
                       <label class="block text-xs font-semibold mb-1">Upload File Referensi (Opsional)</label>
-                      <label class="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl border border-dashed border-[#4a7c59] bg-white hover:bg-[#e6efe6] cursor-pointer text-xs font-bold text-[#2d5a3c]">
+                      <label class="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl border border-dashed border-[#4a7c59] bg-white hover:bg-[#e6efe6] cursor-pointer text-xs font-semibold text-[#2d5a3c]">
                         <i data-lucide="upload" class="w-4 h-4"></i>
                         <span class="truncate">${modalVariantState.referenceFile ? escapeHtml(modalVariantState.referenceFile.name) : 'Pilih File / Gambar'}</span>
                         <input type="file" onchange="handleServiceRefFile(this)" class="hidden" />
@@ -1895,11 +2062,11 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <div>
                   <span class="text-xs font-semibold text-[#43574a]">Total Harga Variasi</span>
                   <div class="flex items-baseline gap-2 mt-0.5">
-                    <span class="text-xl font-extrabold ${isPriceReady ? 'text-[#181f1a]' : 'text-[#d94e4e]'}">
+                    <span class="price-display text-xl font-bold ${isPriceReady ? 'text-[#181f1a]' : 'text-[#d94e4e]'}">
                       ${formatRupiah(effectivePrice)}
                     </span>
                     ${activeVariant?.promoPrice && activeVariant?.basePrice ? `
-                      <span class="text-xs line-through text-[#5e7365]">${formatRupiah(Number(activeVariant.basePrice) + Number(activeVariant.extraFee || 0))}</span>
+                      <span class="price-display text-xs line-through text-[#5e7365]">${formatRupiah(Number(activeVariant.basePrice) + Number(activeVariant.extraFee || 0))}</span>
                     ` : ''}
                   </div>
                 </div>
@@ -1908,9 +2075,9 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-bold text-[#2d5a3c]">Jumlah:</span>
                     <div class="flex items-center bg-white border border-[#d5e3d6] rounded-xl overflow-hidden">
-                      <button type="button" onclick="changeModalQty(-1)" class="px-3 py-1.5 font-bold text-[#2d5a3c] hover:bg-[#f4f7f4]">-</button>
-                      <span class="px-3 py-1.5 text-xs font-extrabold">${modalVariantState.quantity}</span>
-                      <button type="button" onclick="changeModalQty(1)" class="px-3 py-1.5 font-bold text-[#2d5a3c] hover:bg-[#f4f7f4]">+</button>
+                      <button type="button" onclick="changeModalQty(-1)" class="px-3 py-1.5 font-semibold text-[#2d5a3c] hover:bg-[#f4f7f4]">-</button>
+                      <span class="price-display px-3 py-1.5 text-xs font-bold">${modalVariantState.quantity}</span>
+                      <button type="button" onclick="changeModalQty(1)" class="px-3 py-1.5 font-semibold text-[#2d5a3c] hover:bg-[#f4f7f4]">+</button>
                     </div>
                   </div>
                 ` : ''}
@@ -1919,16 +2086,16 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <!-- TOMBOL TAMBAH KE KERANJANG (NONAKTIF JIKA HARGA BELUM TERSEDIA) -->
               ${!isPriceReady ? `
                 <div class="space-y-2.5">
-                  <button type="button" disabled class="w-full py-3.5 rounded-xl bg-stone-200 text-stone-500 font-bold text-xs sm:text-sm cursor-not-allowed">
+                  <button type="button" disabled class="w-full py-3.5 rounded-xl bg-stone-200 text-stone-500 font-semibold text-xs sm:text-sm cursor-not-allowed">
                     Harga belum tersedia — Tidak dapat ditambahkan ke keranjang
                   </button>
-                  <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin menanyakan harga untuk produk *${product.name}* variasi *${activeVariant?.plan} - ${activeVariant?.duration}*.`)}" target="_blank" rel="noreferrer" class="w-full py-3 rounded-xl border border-[#2d5a3c] text-[#2d5a3c] hover:bg-[#e6efe6] font-bold text-xs flex items-center justify-center gap-2">
+                  <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin menanyakan harga untuk produk *${product.name}* variasi *${activeVariant?.plan} - ${activeVariant?.duration}*.`)}" target="_blank" rel="noreferrer" class="w-full py-3 rounded-xl border border-[#2d5a3c] text-[#2d5a3c] hover:bg-[#e6efe6] font-semibold text-xs flex items-center justify-center gap-2">
                     <i data-lucide="phone" class="w-4 h-4"></i>
                     <span>Tanyakan Harga ke Admin WhatsApp (${escapeHtml(s.whatsappNumber)})</span>
                   </a>
                 </div>
               ` : `
-                <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="confirmAddVariantToCart()" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] disabled:bg-stone-300 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
+                <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="confirmAddVariantToCart()" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] disabled:bg-stone-300 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all">
                   <i data-lucide="shopping-bag" class="w-4 h-4"></i>
                   <span>${isOutOfStock ? 'Stok Variasi Habis' : `Tambah ke Keranjang • ${formatRupiah(effectivePrice * modalVariantState.quantity)}`}</span>
                 </button>
@@ -1991,17 +2158,17 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
     }
 
     // =========================================================================
-    // 8. DRAWER KERANJANG BELANJA & CHECKOUT TERVALIDASI
+    // 8. DRAWER KERANJANG BELANJA & CHECKOUT TERVALIDASI (TERMASUK FEE Rp100)
     // =========================================================================
     function openCartDrawer() {
-      const total = state.cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+      const { subtotalAmount, serviceFee, totalAmount } = calculateOrderTotals(state.cart);
       document.getElementById('modal-root').innerHTML = `
         <div class="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex justify-end">
           <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <i data-lucide="shopping-bag" class="w-5 h-5 text-[#2d5a3c]"></i>
-                <h3 class="font-extrabold text-base text-[#181f1a]">Keranjang Belanja</h3>
+                <h3 class="font-bold text-base text-[#181f1a]">Keranjang Belanja</h3>
               </div>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -2012,7 +2179,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   <div class="w-14 h-14 mx-auto rounded-2xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center">
                     <i data-lucide="shopping-bag" class="w-7 h-7"></i>
                   </div>
-                  <p class="font-bold text-[#181f1a]">Keranjang masih kosong</p>
+                  <p class="product-title font-bold text-[#181f1a]">Keranjang masih kosong</p>
                   <p class="text-xs text-[#4e6355]">Pilih produk atau layanan digital dari katalog untuk memulai.</p>
                 </div>
               ` : state.cart.map(item => `
@@ -2020,7 +2187,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   <div class="flex items-start justify-between gap-2">
                     <div>
                       <span class="text-[10px] font-bold uppercase text-[#4a7c59]">${escapeHtml(item.categoryName)}</span>
-                      <h4 class="font-bold text-sm text-[#181f1a]">${escapeHtml(item.productName)}</h4>
+                      <h4 class="product-title font-bold text-sm text-[#181f1a]">${escapeHtml(item.productName)}</h4>
                       <p class="text-xs text-[#4e6355]">${escapeHtml(item.plan)} • ${escapeHtml(item.duration)}</p>
                     </div>
                     <button onclick="removeCartItem('${item.key}')" class="p-1.5 rounded-lg text-[#d94e4e] hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
@@ -2029,23 +2196,33 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   ${item.customBrief?.briefDescription ? `<p class="text-[11px] bg-white px-2.5 py-1 rounded-lg border border-[#d5e3d6] line-clamp-2">Brief: ${escapeHtml(item.customBrief.briefDescription)}</p>` : ''}
                   <div class="flex items-center justify-between pt-2 border-t border-[#e2ece3]">
                     <div class="flex items-center bg-white border border-[#d5e3d6] rounded-lg">
-                      <button onclick="updateCartItemQty('${item.key}', -1)" class="px-2.5 py-1 text-xs font-bold text-[#2d5a3c]">-</button>
-                      <span class="px-2.5 py-1 text-xs font-extrabold">${item.quantity}</span>
-                      <button onclick="updateCartItemQty('${item.key}', 1)" class="px-2.5 py-1 text-xs font-bold text-[#2d5a3c]">+</button>
+                      <button onclick="updateCartItemQty('${item.key}', -1)" class="px-2.5 py-1 text-xs font-semibold text-[#2d5a3c]">-</button>
+                      <span class="price-display px-2.5 py-1 text-xs font-bold">${item.quantity}</span>
+                      <button onclick="updateCartItemQty('${item.key}', 1)" class="px-2.5 py-1 text-xs font-semibold text-[#2d5a3c]">+</button>
                     </div>
-                    <span class="text-sm font-extrabold text-[#2d5a3c]">${formatRupiah(item.unitPrice * item.quantity)}</span>
+                    <span class="price-display text-sm font-bold text-[#2d5a3c]">${formatRupiah(item.unitPrice * item.quantity)}</span>
                   </div>
                 </div>
               `).join('')}
             </div>
 
             ${state.cart.length > 0 ? `
-              <div class="p-6 border-t border-[#d5e3d6] bg-white space-y-4">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm font-semibold text-[#4e6355]">Total Pembayaran</span>
-                  <span class="text-xl font-extrabold text-[#181f1a]">${formatRupiah(total)}</span>
+              <div class="p-6 border-t border-[#d5e3d6] bg-white space-y-3">
+                <div class="payment-info-text space-y-1.5 text-xs">
+                  <div class="flex items-center justify-between text-[#4e6355]">
+                    <span>Harga Produk</span>
+                    <span class="price-display font-bold text-[#181f1a]">${formatRupiah(subtotalAmount)}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[#4e6355]">
+                    <span>Fee Layanan</span>
+                    <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(serviceFee)}</span>
+                  </div>
                 </div>
-                <button onclick="openCheckoutModal()" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm flex items-center justify-center gap-2">
+                <div class="flex items-center justify-between pt-2 border-t border-[#eef4ef]">
+                  <span class="text-sm font-semibold text-[#4e6355]">Total Pembayaran</span>
+                  <span class="price-display text-xl font-bold text-[#181f1a]">${formatRupiah(totalAmount)}</span>
+                </div>
+                <button onclick="openCheckoutModal()" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm flex items-center justify-center gap-2">
                   <span>Lanjutkan Checkout</span>
                   <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </button>
@@ -2074,12 +2251,12 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
     }
 
     function openCheckoutModal() {
-      const total = state.cart.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+      const { subtotalAmount, serviceFee, totalAmount } = calculateOrderTotals(state.cart);
       document.getElementById('modal-root').innerHTML = `
         <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-lg text-[#181f1a]">Checkout Pesanan</h3>
+              <h3 class="font-bold text-lg text-[#181f1a]">Checkout Pesanan</h3>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <form onsubmit="submitCheckoutOrder(event)" class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
@@ -2104,21 +2281,31 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <textarea id="chk-notes" rows="2" placeholder="Email invite / catatan khusus..." class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none"></textarea>
               </div>
 
-              <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-2">
-                <p class="text-xs font-extrabold uppercase tracking-wider text-[#2d5a3c]">Ringkasan Pesanan</p>
+              <div class="payment-info-text p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-2">
+                <p class="text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">Rincian Pembayaran</p>
                 ${state.cart.map(i => `
-                  <div class="flex items-center justify-between text-xs py-1 border-b border-[#e6efe6] last:border-none">
+                  <div class="flex items-center justify-between text-xs py-1 border-b border-[#e6efe6]">
                     <span>${escapeHtml(i.productName)} (${escapeHtml(i.plan)} - ${escapeHtml(i.duration)}) x${i.quantity}</span>
-                    <span class="font-bold">${formatRupiah(i.unitPrice * i.quantity)}</span>
+                    <span class="price-display font-bold">${formatRupiah(i.unitPrice * i.quantity)}</span>
                   </div>
                 `).join('')}
-                <div class="pt-2 flex items-center justify-between text-sm font-extrabold">
+                <div class="pt-1 space-y-1.5 text-xs">
+                  <div class="flex items-center justify-between text-[#4e6355]">
+                    <span>Harga Produk</span>
+                    <span class="price-display font-bold text-[#181f1a]">${formatRupiah(subtotalAmount)}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[#4e6355]">
+                    <span>Fee Layanan</span>
+                    <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(serviceFee)}</span>
+                  </div>
+                </div>
+                <div class="pt-2 border-t border-[#d5e3d6] flex items-center justify-between text-sm font-bold">
                   <span>Total Pembayaran</span>
-                  <span class="text-[#2d5a3c]">${formatRupiah(total)}</span>
+                  <span class="price-display text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
                 </div>
               </div>
 
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm shadow-sm">
                 Buat Pesanan & Lanjut Pembayaran
               </button>
             </form>
@@ -2157,7 +2344,8 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
         });
       }
 
-      const totalAmount = validatedItems.reduce((sum, i) => sum + i.subtotal, 0);
+      // Hitung otomatis Harga Produk + Fee Layanan Rp100
+      const { subtotalAmount, serviceFee, totalAmount } = calculateOrderTotals(validatedItems);
       const now = new Date();
       const orderNumber = `GS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -2168,14 +2356,15 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
         customerWhatsapp,
         customerNotes,
         items: validatedItems,
+        subtotalAmount,
+        serviceFee,
         totalAmount,
         paymentMethod,
         paymentProofImage: '',
         status: 'Waiting for Payment',
-        status: 'Waiting for Payment',
         paymentDeadline: new Date(now.getTime() + PAYMENT_TIMEOUT_MS).toISOString(),
         createdAt: now.toISOString(),
-        createdAt: now.toISOString(),
+        paidAt: null,
         updatedAt: now.toISOString()
       };
 
@@ -2210,8 +2399,8 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
       if (!order) {
         return `
           <div class="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-            <p class="font-bold text-lg">Tidak ada invoice pembayaran aktif.</p>
-            <button onclick="navigateTo('orders')" class="px-5 py-2.5 rounded-xl bg-[#2d5a3c] text-white text-sm font-bold">Lihat Daftar Pesanan</button>
+            <p class="product-title font-bold text-lg">Tidak ada invoice pembayaran aktif.</p>
+            <button onclick="navigateTo('orders')" class="px-5 py-2.5 rounded-xl bg-[#2d5a3c] text-white text-sm font-semibold">Lihat Daftar Pesanan</button>
           </div>
         `;
       }
@@ -2219,6 +2408,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
       const deadlineMs = getOrderPaymentDeadline(order);
       const remainingMs = deadlineMs - Date.now();
       const isExpired = order.status === 'Cancelled' || (order.status === 'Waiting for Payment' && remainingMs <= 0);
+      const { subtotalAmount, serviceFee, totalAmount } = getOrderFinancialBreakdown(order);
 
       const method = tempPaymentMethod || order.paymentMethod || 'QRIS';
       const proof = tempProofDataUrl || order.paymentProofImage || '';
@@ -2228,15 +2418,43 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
       return `
         <div class="max-w-3xl mx-auto px-4 sm:px-6 py-10">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 sm:p-8 shadow-2xs space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-[#eef4ef]">
-              <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Nomor Pesanan</span>
-                <h1 class="text-2xl font-extrabold text-[#181f1a] mt-0.5">${escapeHtml(order.orderNumber)}</h1>
-                <p class="text-xs text-[#4e6355]">Pemesan: <strong>${escapeHtml(order.customerName)}</strong> (${escapeHtml(order.customerWhatsapp)})</p>
+            <div class="flex flex-wrap items-start justify-between gap-4 pb-5 border-b border-[#eef4ef]">
+              <div class="space-y-2">
+                <div>
+                  <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Nomor Pesanan</span>
+                  <h1 class="text-2xl font-extrabold text-[#181f1a] mt-0.5">${escapeHtml(order.orderNumber)}</h1>
+                  <p class="text-xs text-[#4e6355]">Pemesan: <strong>${escapeHtml(order.customerName)}</strong> (${escapeHtml(order.customerWhatsapp)})</p>
+                </div>
+                <div class="pt-1">
+                  ${renderOrderTimestampRows(order)}
+                </div>
               </div>
               <div class="text-right">
                 <span class="text-xs text-[#4e6355] block">Total Pembayaran</span>
-                <span class="text-2xl font-extrabold text-[#2d5a3c]">${formatRupiah(order.totalAmount)}</span>
+                <span class="price-display text-2xl font-bold text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
+              </div>
+            </div>
+
+            <!-- RINCIAN PEMBAYARAN INVOICE (HARGA PRODUK + FEE LAYANAN Rp100) -->
+            <div class="payment-info-text p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-2 text-xs">
+              <p class="font-bold uppercase tracking-wider text-[#2d5a3c]">Rincian Pembayaran</p>
+              ${(order.items || []).map(it => `
+                <div class="flex items-center justify-between py-1 border-b border-[#e6efe6]">
+                  <span>${escapeHtml(it.productName)} (${escapeHtml(it.plan)} • ${escapeHtml(it.duration)}) x${it.quantity}</span>
+                  <span class="price-display font-bold">${formatRupiah(it.subtotal)}</span>
+                </div>
+              `).join('')}
+              <div class="flex items-center justify-between text-[#4e6355] pt-1">
+                <span>Harga Produk</span>
+                <span class="price-display font-bold text-[#181f1a]">${formatRupiah(subtotalAmount)}</span>
+              </div>
+              <div class="flex items-center justify-between text-[#4e6355]">
+                <span>Fee Layanan</span>
+                <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(serviceFee)}</span>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-[#d5e3d6] text-sm font-bold">
+                <span>Total Pembayaran</span>
+                <span class="price-display text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
               </div>
             </div>
 
@@ -2245,7 +2463,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               <div class="p-5 rounded-2xl bg-red-50 border border-red-200 text-[#d94e4e] flex items-start gap-3">
                 <i data-lucide="x-circle" class="w-6 h-6 shrink-0 mt-0.5"></i>
                 <div class="space-y-1">
-                  <p class="font-extrabold text-sm">Pesanan Dibatalkan Otomatis (Waktu Habis)</p>
+                  <p class="font-bold text-sm">Pesanan Dibatalkan Otomatis (Waktu Habis)</p>
                   <p class="text-xs text-red-800 leading-relaxed">Batas waktu pembayaran selama 1 jam telah berakhir. Silakan buat pesanan baru dari katalog jika masih ingin melanjutkan.</p>
                 </div>
               </div>
@@ -2254,11 +2472,11 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <div class="flex items-center gap-2.5 text-amber-900">
                   <i data-lucide="clock" class="w-5 h-5 text-amber-600 shrink-0"></i>
                   <div>
-                    <p class="text-xs font-extrabold">Selesaikan Pembayaran Dalam 1 Jam</p>
+                    <p class="text-xs font-bold">Selesaikan Pembayaran Dalam 1 Jam</p>
                     <p class="text-[11px] text-amber-800">Pesanan otomatis dibatalkan jika melewati batas waktu.</p>
                   </div>
                 </div>
-                <div class="px-3.5 py-2 rounded-xl bg-amber-600 text-white font-mono font-extrabold text-base tracking-wider" data-countdown-deadline="${deadlineMs}">
+                <div class="price-display px-3.5 py-2 rounded-xl bg-amber-600 text-white font-bold text-base tracking-wider" data-countdown-deadline="${deadlineMs}">
                   ${formatRemainingCountdown(remainingMs)}
                 </div>
               </div>
@@ -2274,7 +2492,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                     { id: 'DANA', icon: 'wallet' },
                     { id: 'SeaBank', icon: 'building-2' }
                   ].map(m => `
-                    <button type="button" onclick="selectPaymentMethod('${m.id}')" class="p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 font-bold text-sm transition-all ${
+                    <button type="button" onclick="selectPaymentMethod('${m.id}')" class="p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 font-semibold text-sm transition-all ${
                       method === m.id ? 'border-[#2d5a3c] bg-[#e6efe6] text-[#2d5a3c] ring-1 ring-[#2d5a3c]' : 'border-[#d5e3d6] bg-white text-[#43574a]'
                     }">
                       <i data-lucide="${m.icon}" class="w-5 h-5"></i>
@@ -2285,7 +2503,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
               </div>
 
               <!-- INFORMASI REKENING / QRIS -->
-              <div class="p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
+              <div class="payment-info-text p-5 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-3">
                 <h3 class="font-bold text-sm text-[#181f1a]">Informasi Pembayaran (${method})</h3>
                 ${method === 'QRIS' ? (
                   payCfg.qrisImage
@@ -2300,7 +2518,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                   payCfg.accountNumber
                     ? `<div class="space-y-1">
                         <p class="text-xs text-[#4e6355]">Nomor Tujuan ${method}:</p>
-                        <p class="text-xl font-extrabold text-[#181f1a] select-all">${escapeHtml(payCfg.accountNumber)}</p>
+                        <p class="price-display text-xl font-bold text-[#181f1a] select-all">${escapeHtml(payCfg.accountNumber)}</p>
                         ${payCfg.accountName ? `<p class="text-xs font-semibold text-[#2d5a3c]">Atas Nama: ${escapeHtml(payCfg.accountName)}</p>` : ''}
                       </div>`
                     : `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
@@ -2331,15 +2549,15 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
 
             <div class="flex flex-col sm:flex-row gap-3 pt-2">
               ${!isExpired ? `
-                <button type="button" onclick="confirmOrderPayment('${order.id}')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+                <button type="button" onclick="confirmOrderPayment('${order.id}')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm shadow-sm">
                   Konfirmasi Pembayaran
                 </button>
               ` : `
-                <button type="button" onclick="navigateToCategory('all')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+                <button type="button" onclick="navigateToCategory('all')" class="flex-1 py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm shadow-sm">
                   Pesan Ulang di Katalog
                 </button>
               `}
-              <button type="button" onclick="navigateTo('orders')" class="px-5 py-3.5 rounded-xl border border-[#d5e3d6] text-[#43574a] font-bold text-sm hover:bg-[#f4f7f4]">
+              <button type="button" onclick="navigateTo('orders')" class="px-5 py-3.5 rounded-xl border border-[#d5e3d6] text-[#43574a] font-semibold text-sm hover:bg-[#f4f7f4]">
                 Ke Halaman Pesanan
               </button>
             </div>
@@ -2347,6 +2565,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
         </div>
       `;
     }
+
     function selectPaymentMethod(method) {
       tempPaymentMethod = method;
       renderApp();
@@ -2361,7 +2580,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
       });
     }
 
-function confirmOrderPayment(orderId) {
+    function confirmOrderPayment(orderId) {
       const idx = state.orders.findIndex(o => o.id === orderId);
       if (idx === -1) return;
       const proof = tempProofDataUrl || state.orders[idx].paymentProofImage;
@@ -2410,9 +2629,9 @@ function confirmOrderPayment(orderId) {
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 sm:p-8 shadow-2xs space-y-5">
             <div>
               <span class="text-xs font-bold uppercase tracking-wider text-[#4a7c59]">Pelacakan 8 Status Pesanan</span>
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">Cek Status Pesanan</h1>
+              <h1 class="text-2xl sm:text-3xl font-extrabold text-[#181f1a] mt-1">Detail & Status Pesanan</h1>
               <p class="text-xs sm:text-sm text-[#4e6355] mt-1">
-                Masukkan Nomor Pesanan (contoh: GS-2026XXXX) dan Nomor WhatsApp Anda untuk melacak status pesanan.
+                Masukkan Nomor Pesanan (contoh: GS-2026XXXX) dan Nomor WhatsApp Anda untuk melacak detail pesanan.
               </p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2423,53 +2642,78 @@ function confirmOrderPayment(orderId) {
 
           ${matched.length === 0 ? `
             <div class="bg-white border border-[#d5e3d6] rounded-3xl p-12 text-center space-y-2">
-              <p class="font-bold text-base text-[#181f1a]">Belum ada pesanan yang ditemukan</p>
+              <p class="product-title font-bold text-base text-[#181f1a]">Belum ada pesanan yang ditemukan</p>
               <p class="text-xs text-[#4e6355]">Buat pesanan melalui katalog atau periksa kembali Nomor Pesanan & WhatsApp Anda.</p>
             </div>
           ` : `
             <div class="space-y-4">
-              ${matched.map(o => `
-                <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 shadow-2xs space-y-4">
-                  <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#eef4ef]">
-                    <div>
-                      <span class="text-xs text-[#5e7365] block">${new Date(o.createdAt).toLocaleString('id-ID')}</span>
-                      <h3 class="text-lg font-extrabold text-[#181f1a]">${escapeHtml(o.orderNumber)}</h3>
-                      <p class="text-xs text-[#43574a]">Pemesan: <strong>${escapeHtml(o.customerName)}</strong> (${escapeHtml(o.customerWhatsapp)})</p>
-                    </div>
-                    <div class="flex flex-col items-end gap-1.5">
-                      <span class="px-3.5 py-1.5 rounded-full text-xs font-extrabold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
-                      <span class="text-base font-extrabold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</span>
-                    </div>
-                  </div>
-
-                  <div class="space-y-2">
-                    ${(o.items || []).map(it => `
-                      <div class="flex items-center justify-between text-xs bg-[#f4f7f4] px-3.5 py-2.5 rounded-xl">
-                        <span><strong>${escapeHtml(it.productName)}</strong> (${escapeHtml(it.plan)} • ${escapeHtml(it.duration)}) x${it.quantity}</span>
-                        <span class="font-bold text-[#2d5a3c]">${formatRupiah(it.subtotal)}</span>
+              ${matched.map(o => {
+                const { subtotalAmount, serviceFee, totalAmount } = getOrderFinancialBreakdown(o);
+                return `
+                  <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 shadow-2xs space-y-4">
+                    <div class="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-[#eef4ef]">
+                      <div class="space-y-1">
+                        <h3 class="text-lg font-bold text-[#181f1a]">${escapeHtml(o.orderNumber)}</h3>
+                        <p class="text-xs text-[#43574a]">Pemesan: <strong>${escapeHtml(o.customerName)}</strong> (${escapeHtml(o.customerWhatsapp)})</p>
                       </div>
-                    `).join('')}
-                  </div>
-
-                  <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-                    ${o.status === 'Waiting for Payment' ? `
-                      <div class="flex flex-wrap items-center gap-2.5">
-                        <button onclick="openPaymentForOrder('${o.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">
-                          Bayar / Upload Bukti Transfer
-                        </button>
-                        <span class="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5">
-                          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
-                          <span>Sisa waktu: <strong class="font-mono" data-countdown-deadline="${getOrderPaymentDeadline(o)}">${formatRemainingCountdown(getOrderPaymentDeadline(o) - Date.now())}</strong></span>
-                        </span>
+                      <div class="flex flex-col items-end gap-1.5">
+                        <span class="px-3.5 py-1.5 rounded-full text-xs font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
+                        <span class="price-display text-base font-bold text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
                       </div>
-                    ` : ''}
-                    <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin konfirmasi pesanan *${o.orderNumber}* atas nama *${o.customerName}*.`)}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#d5e3d6] hover:bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold ml-auto">
-                      <i data-lucide="phone" class="w-3.5 h-3.5"></i>
-                      <span>Hubungi Admin WhatsApp</span>
-                    </a>
+                    </div>
+
+                    <!-- DETAIL WAKTU & TANGGAL PESANAN (SERVER / WIB) -->
+                    <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6]">
+                      ${renderOrderTimestampRows(o)}
+                    </div>
+
+                    <!-- DAFTAR ITEM PESANAN -->
+                    <div class="space-y-2">
+                      ${(o.items || []).map(it => `
+                        <div class="flex items-center justify-between text-xs bg-[#f4f7f4] px-3.5 py-2.5 rounded-xl">
+                          <span><strong>${escapeHtml(it.productName)}</strong> (${escapeHtml(it.plan)} • ${escapeHtml(it.duration)}) x${it.quantity}</span>
+                          <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(it.subtotal)}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+
+                    <!-- RINCIAN PEMBAYARAN (HARGA PRODUK + FEE LAYANAN Rp100) -->
+                    <div class="payment-info-text p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-1.5 text-xs">
+                      <p class="font-bold uppercase tracking-wider text-[#2d5a3c] mb-1">Rincian Pembayaran</p>
+                      <div class="flex items-center justify-between text-[#4e6355]">
+                        <span>Harga Produk</span>
+                        <span class="price-display font-bold text-[#181f1a]">${formatRupiah(subtotalAmount)}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[#4e6355]">
+                        <span>Fee Layanan</span>
+                        <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(serviceFee)}</span>
+                      </div>
+                      <div class="flex items-center justify-between pt-2 border-t border-[#d5e3d6] text-sm font-bold">
+                        <span>Total Pembayaran</span>
+                        <span class="price-display text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                      ${o.status === 'Waiting for Payment' ? `
+                        <div class="flex flex-wrap items-center gap-2.5">
+                          <button onclick="openPaymentForOrder('${o.id}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold">
+                            Bayar / Upload Bukti Transfer
+                          </button>
+                          <span class="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5">
+                            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                            <span>Sisa waktu: <strong class="price-display" data-countdown-deadline="${getOrderPaymentDeadline(o)}">${formatRemainingCountdown(getOrderPaymentDeadline(o) - Date.now())}</strong></span>
+                          </span>
+                        </div>
+                      ` : ''}
+                      <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin konfirmasi pesanan *${o.orderNumber}* atas nama *${o.customerName}*.`)}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#d5e3d6] hover:bg-[#e6efe6] text-[#2d5a3c] text-xs font-semibold ml-auto">
+                        <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                        <span>Hubungi Admin WhatsApp</span>
+                      </a>
+                    </div>
                   </div>
-                </div>
-              `).join('')}
+                `;
+              }).join('')}
             </div>
           `}
         </div>
@@ -2502,8 +2746,8 @@ function confirmOrderPayment(orderId) {
               </div>
             </div>
             <div class="pt-2 flex flex-wrap gap-3">
-              <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Buka Katalog</button>
-              <a href="https://wa.me/${escapeHtml(waClean)}" target="_blank" rel="noreferrer" class="px-6 py-3 rounded-xl border border-[#2d5a3c] text-[#2d5a3c] font-bold text-sm hover:bg-[#e6efe6]">WhatsApp: ${escapeHtml(s.whatsappNumber)}</a>
+              <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Buka Katalog</button>
+              <a href="https://wa.me/${escapeHtml(waClean)}" target="_blank" rel="noreferrer" class="px-6 py-3 rounded-xl border border-[#2d5a3c] text-[#2d5a3c] font-semibold text-sm hover:bg-[#e6efe6]">WhatsApp: ${escapeHtml(s.whatsappNumber)}</a>
             </div>
           </div>
         </div>
@@ -2521,7 +2765,7 @@ function confirmOrderPayment(orderId) {
         <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Profil Pelanggan</h3>
+              <h3 class="font-bold text-base text-[#181f1a]">Profil Pelanggan</h3>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <form onsubmit="saveUserProfile(event)" class="p-6 space-y-4">
@@ -2552,7 +2796,7 @@ function confirmOrderPayment(orderId) {
                 <label class="block text-xs font-bold mb-1">Email (Untuk Invite Akun Premium)</label>
                 <input id="prof-email" type="email" value="${escapeHtml(state.userProfile.email)}" placeholder="nama@email.com" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
               </div>
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Profil</button>
+              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Simpan Profil</button>
             </form>
           </div>
         </div>
@@ -2586,14 +2830,14 @@ function confirmOrderPayment(orderId) {
       showToast('Profil pelanggan berhasil diperbarui.');
     }
 
-   function openAdminLoginModal() {
+    function openAdminLoginModal() {
       document.getElementById('modal-root').innerHTML = `
         <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#181f1a] text-white flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <i data-lucide="shield-check" class="w-5 h-5 text-[#95d1a6]"></i>
-                <h3 class="font-extrabold text-base">Akses Khusus Admin</h3>
+                <h3 class="font-bold text-base">Akses Khusus Admin</h3>
               </div>
               <button onclick="closeModal()" class="p-1.5 rounded-lg hover:bg-white/10"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -2606,7 +2850,7 @@ function confirmOrderPayment(orderId) {
                 <label class="block text-xs font-bold mb-1">Kata Sandi</label>
                 <input id="adm-pass" type="password" required placeholder="Masukkan kata sandi admin" class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm" />
               </div>
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Masuk ke Admin Dashboard</button>
+              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Masuk ke Admin Dashboard</button>
             </form>
           </div>
         </div>
@@ -2647,7 +2891,7 @@ function confirmOrderPayment(orderId) {
       navigateTo('home');
       showToast('Anda telah keluar dari Admin Dashboard.');
     }
-    
+
     // =========================================================================
     // 11. ADMIN DASHBOARD (14 MENU LENGKAP)
     // =========================================================================
@@ -2670,7 +2914,7 @@ function confirmOrderPayment(orderId) {
 
     function renderAdminDashboard() {
       if (!state.adminAuth.isAuthenticated) {
-        return `<div class="p-16 text-center"><button onclick="openAdminLoginModal()" class="px-6 py-3 rounded-xl bg-[#2d5a3c] text-white font-bold">Login Admin Terlebih Dahulu</button></div>`;
+        return `<div class="p-16 text-center"><button onclick="openAdminLoginModal()" class="px-6 py-3 rounded-xl bg-[#2d5a3c] text-white font-semibold">Login Admin Terlebih Dahulu</button></div>`;
       }
 
       const activeMenu = ADMIN_MENUS.find(m => m.id === state.activeAdminMenu) || ADMIN_MENUS[0];
@@ -2686,14 +2930,14 @@ function confirmOrderPayment(orderId) {
                   : `<div class="w-10 h-10 rounded-full bg-[#4a7c59] flex items-center justify-center font-bold">A</div>`
                 }
                 <div class="min-w-0">
-                  <p class="font-bold text-xs truncate">${escapeHtml(state.adminAuth.adminName || 'Admin GALEYN')}</p>
+                  <p class="font-bold text-xs truncate">${escapeHtml(state.adminAuth.adminName || 'Admin CIFCUFS')}</p>
                   <p class="text-[11px] text-[#95d1a6] truncate">${escapeHtml(state.adminAuth.email)}</p>
                 </div>
               </div>
 
               <div class="space-y-1 max-h-[65vh] overflow-y-auto pr-1">
                 ${ADMIN_MENUS.map(m => `
-                  <button onclick="setAdminMenu('${m.id}')" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-left transition-all ${
+                  <button onclick="setAdminMenu('${m.id}')" class="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${
                     state.activeAdminMenu === m.id ? 'bg-[#2d5a3c] text-white' : 'text-[#43574a] hover:bg-[#e6efe6]'
                   }">
                     <i data-lucide="${m.icon}" class="w-4 h-4 shrink-0"></i>
@@ -2702,7 +2946,7 @@ function confirmOrderPayment(orderId) {
                 `).join('')}
               </div>
 
-              <button onclick="logoutAdmin()" class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-red-200 text-[#d94e4e] hover:bg-red-50 text-xs font-bold">
+              <button onclick="logoutAdmin()" class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-red-200 text-[#d94e4e] hover:bg-red-50 text-xs font-semibold">
                 <i data-lucide="log-out" class="w-4 h-4"></i>
                 <span>Keluar Admin</span>
               </button>
@@ -2721,7 +2965,9 @@ function confirmOrderPayment(orderId) {
       // 1. RINGKASAN DASHBOARD
       if (activeMenu.id === 'summary') {
         const paidStatuses = ['Paid', 'In Progress', 'Revision', 'Completed'];
-        const revenue = state.orders.filter(o => paidStatuses.includes(o.status)).reduce((s, o) => s + Number(o.totalAmount || 0), 0);
+        const revenue = state.orders
+          .filter(o => paidStatuses.includes(o.status))
+          .reduce((s, o) => s + getOrderFinancialBreakdown(o).totalAmount, 0);
         const kpis = [
           { label: 'Total Produk', value: state.products.length },
           { label: 'Total Kategori', value: state.categories.length },
@@ -2738,15 +2984,15 @@ function confirmOrderPayment(orderId) {
             ${kpis.map(k => `
               <div class="bg-white border border-[#d5e3d6] rounded-2xl p-4 shadow-2xs">
                 <span class="text-[11px] font-semibold text-[#4e6355]">${k.label}</span>
-                <p class="text-lg sm:text-xl font-extrabold text-[#181f1a] mt-1">${k.value}</p>
+                <p class="price-display text-lg sm:text-xl font-bold text-[#181f1a] mt-1">${k.value}</p>
               </div>
             `).join('')}
           </div>
 
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="font-extrabold text-base">Aktivitas Pesanan Terbaru</h3>
-              <button onclick="setAdminMenu('orders')" class="text-xs font-bold text-[#2d5a3c] underline">Kelola Pesanan</button>
+              <h3 class="font-bold text-base">Aktivitas Pesanan Terbaru</h3>
+              <button onclick="setAdminMenu('orders')" class="text-xs font-semibold text-[#2d5a3c] underline">Kelola Pesanan</button>
             </div>
             ${state.orders.length === 0 ? `<p class="text-xs text-[#4e6355] py-6 text-center">Belum ada pesanan masuk.</p>` : `
               <div class="overflow-x-auto">
@@ -2755,19 +3001,24 @@ function confirmOrderPayment(orderId) {
                     <tr class="border-b border-[#eef4ef] text-[#4e6355]">
                       <th class="py-2.5">No. Pesanan</th>
                       <th class="py-2.5">Pelanggan</th>
-                      <th class="py-2.5">Total</th>
+                      <th class="py-2.5">Waktu (WIB)</th>
+                      <th class="py-2.5">Total (+Fee Rp100)</th>
                       <th class="py-2.5">Status</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-[#eef4ef]">
-                    ${state.orders.slice(0, 6).map(o => `
-                      <tr>
-                        <td class="py-3 font-bold">${escapeHtml(o.orderNumber)}</td>
-                        <td class="py-3">${escapeHtml(o.customerName)}</td>
-                        <td class="py-3 font-bold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</td>
-                        <td class="py-3"><span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span></td>
-                      </tr>
-                    `).join('')}
+                    ${state.orders.slice(0, 6).map(o => {
+                      const fin = getOrderFinancialBreakdown(o);
+                      return `
+                        <tr>
+                          <td class="py-3 font-bold">${escapeHtml(o.orderNumber)}</td>
+                          <td class="py-3">${escapeHtml(o.customerName)}</td>
+                          <td class="py-3 text-[#4e6355]">${escapeHtml(formatOrderDateID(o.serverCreatedAt || o.createdAt))} • ${escapeHtml(formatOrderTimeWIB(o.serverCreatedAt || o.createdAt))}</td>
+                          <td class="price-display py-3 font-bold text-[#2d5a3c]">${formatRupiah(fin.totalAmount)}</td>
+                          <td class="py-3"><span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span></td>
+                        </tr>
+                      `;
+                    }).join('')}
                   </tbody>
                 </table>
               </div>
@@ -2787,10 +3038,10 @@ function confirmOrderPayment(orderId) {
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
             <div class="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">${escapeHtml(activeMenu.label)}</h2>
+                <h2 class="text-xl font-bold text-[#181f1a]">${escapeHtml(activeMenu.label)}</h2>
                 <p class="text-xs text-[#4e6355]">Tambah produk/jasa baru, ubah urutan, gambar, status aktif, atau hapus produk.</p>
               </div>
-              <button onclick="openProductFormModal(null, '${activeMenu.catId || 'streaming'}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center gap-1.5">
+              <button onclick="openProductFormModal(null, '${activeMenu.catId || 'streaming'}')" class="px-4 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold inline-flex items-center gap-1.5">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 <span>Tambah Produk / Jasa</span>
               </button>
@@ -2824,16 +3075,16 @@ function confirmOrderPayment(orderId) {
                               : `<div class="w-9 h-9 rounded-lg bg-[#e6efe6] text-[#2d5a3c] flex items-center justify-center font-bold">${escapeHtml(p.name.charAt(0))}</div>`
                             }
                             <div>
-                              <p class="font-bold text-[#181f1a]">${escapeHtml(p.name)}</p>
+                              <p class="product-title font-bold text-[#181f1a]">${escapeHtml(p.name)}</p>
                               ${p.subcategory ? `<span class="text-[10px] text-[#4a7c59] font-bold">${escapeHtml(p.subcategory)}</span>` : ''}
                             </div>
                           </div>
                         </td>
                         <td class="py-3 text-[#4e6355]">${escapeHtml(cat?.name || '')}</td>
                         <td class="py-3 font-semibold">${(p.variants || []).length} opsi</td>
-                        <td class="py-3 font-bold text-[#2d5a3c]">${formatRupiah(getProductStartingPrice(p))}</td>
+                        <td class="price-display py-3 font-bold text-[#2d5a3c]">${formatRupiah(getProductStartingPrice(p))}</td>
                         <td class="py-3">
-                          <button onclick="toggleAdminProductActive('${p.id}')" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${p.active ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'}">
+                          <button onclick="toggleAdminProductActive('${p.id}')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold ${p.active ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'}">
                             ${p.active ? 'Aktif' : 'Nonaktif'}
                           </button>
                         </td>
@@ -2857,7 +3108,7 @@ function confirmOrderPayment(orderId) {
         return `
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
             <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">9. Kelola Variasi Produk</h2>
+              <h2 class="text-xl font-bold text-[#181f1a]">9. Kelola Variasi Produk</h2>
               <p class="text-xs text-[#4e6355]">Tambah variasi paket/durasi baru, hapus variasi, atau ubah status stok ketersediaan.</p>
             </div>
 
@@ -2871,7 +3122,7 @@ function confirmOrderPayment(orderId) {
             <form onsubmit="addAdminVariant(event, '${prod?.id}')" class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input id="new-var-plan" type="text" required placeholder="Nama Plan / Paket (mis: 1P1U)" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
               <input id="new-var-dur" type="text" required placeholder="Durasi / Kuota (mis: 1 Bulan)" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-              <button type="submit" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center justify-center gap-1.5">
+              <button type="submit" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 <span>Tambah Variasi</span>
               </button>
@@ -2881,11 +3132,11 @@ function confirmOrderPayment(orderId) {
               ${(prod?.variants || []).map(v => `
                 <div class="p-3.5 rounded-xl border border-[#d5e3d6] flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p class="text-xs font-extrabold text-[#181f1a]">${escapeHtml(v.plan)} — <span class="text-[#4a7c59]">${escapeHtml(v.duration)}</span></p>
-                    <p class="text-[11px] text-[#4e6355]">Harga aktif: <strong>${formatRupiah(getVariantEffectivePrice(v))}</strong></p>
+                    <p class="product-title text-xs font-bold text-[#181f1a]">${escapeHtml(v.plan)} — <span class="text-[#4a7c59]">${escapeHtml(v.duration)}</span></p>
+                    <p class="text-[11px] text-[#4e6355]">Harga aktif: <strong class="price-display">${formatRupiah(getVariantEffectivePrice(v))}</strong></p>
                   </div>
                   <div class="flex items-center gap-2">
-                    <button onclick="toggleAdminVariantStock('${prod.id}', '${v.id}')" class="px-3 py-1 rounded-lg text-xs font-bold ${v.stock === 'Habis' ? 'bg-red-50 text-[#d94e4e]' : 'bg-[#e6efe6] text-[#2d5a3c]'}">
+                    <button onclick="toggleAdminVariantStock('${prod.id}', '${v.id}')" class="px-3 py-1 rounded-lg text-xs font-semibold ${v.stock === 'Habis' ? 'bg-red-50 text-[#d94e4e]' : 'bg-[#e6efe6] text-[#2d5a3c]'}">
                       Stok: ${escapeHtml(v.stock || 'Tersedia')}
                     </button>
                     <button onclick="deleteAdminVariant('${prod.id}', '${v.id}')" class="p-2 rounded-lg text-[#d94e4e] hover:bg-red-50">
@@ -2906,7 +3157,7 @@ function confirmOrderPayment(orderId) {
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
             <div class="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">10. Kelola Harga Independen</h2>
+                <h2 class="text-xl font-bold text-[#181f1a]">10. Kelola Harga Independen</h2>
                 <p class="text-xs text-[#4e6355]">Atur harga dasar, harga promo, dan biaya tambahan (seperti +Rp5.000 pada YouTube Music Head) untuk tiap variasi.</p>
               </div>
               <select onchange="state.adminPriceCatFilter = this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-[#d5e3d6] text-xs font-bold">
@@ -2920,10 +3171,10 @@ function confirmOrderPayment(orderId) {
                 <div class="border border-[#d5e3d6] rounded-2xl overflow-hidden">
                   <div class="px-5 py-3.5 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
                     <div>
-                      <h3 class="font-extrabold text-sm text-[#181f1a]">${escapeHtml(p.name)}</h3>
+                      <h3 class="product-title font-bold text-sm text-[#181f1a]">${escapeHtml(p.name)}</h3>
                       <span class="text-[11px] text-[#4a7c59] font-semibold">${escapeHtml(state.categories.find(c => c.id === p.categoryId)?.name || '')}</span>
                     </div>
-                    <button onclick="saveAdminProductPrices('${p.id}')" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold inline-flex items-center gap-1.5">
+                    <button onclick="saveAdminProductPrices('${p.id}')" class="px-4 py-2 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold inline-flex items-center gap-1.5">
                       <i data-lucide="save" class="w-3.5 h-3.5"></i>
                       <span>Simpan Harga</span>
                     </button>
@@ -2954,7 +3205,7 @@ function confirmOrderPayment(orderId) {
                             <td class="py-2.5">
                               <input id="price-extra-${v.id}" type="number" min="0" value="${v.extraFee || 0}" class="w-24 px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs" />
                             </td>
-                            <td class="py-2.5 font-extrabold text-[#2d5a3c]">${formatRupiah(getVariantEffectivePrice(v))}</td>
+                            <td class="price-display py-2.5 font-bold text-[#2d5a3c]">${formatRupiah(getVariantEffectivePrice(v))}</td>
                           </tr>
                         `).join('')}
                       </tbody>
@@ -2972,8 +3223,8 @@ function confirmOrderPayment(orderId) {
         return `
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
             <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">11. Kelola Pesanan</h2>
-              <p class="text-xs text-[#4e6355]">Kelola status 8 tahap pesanan, periksa brief layanan, dan unduh file referensi pelanggan.</p>
+              <h2 class="text-xl font-bold text-[#181f1a]">11. Kelola Pesanan</h2>
+              <p class="text-xs text-[#4e6355]">Kelola status 8 tahap pesanan, periksa timestamp WIB, rincian fee Rp100, brief layanan, dan file referensi pelanggan.</p>
             </div>
             ${state.orders.length === 0 ? `<p class="text-xs text-[#4e6355] py-10 text-center">Belum ada pesanan masuk.</p>` : `
               <div class="overflow-x-auto">
@@ -2982,30 +3233,41 @@ function confirmOrderPayment(orderId) {
                     <tr class="border-b border-[#eef4ef] text-[#4e6355]">
                       <th class="py-3">No. Pesanan</th>
                       <th class="py-3">Pelanggan</th>
-                      <th class="py-3">Total</th>
+                      <th class="py-3">Waktu Order</th>
+                      <th class="py-3">Total (+Fee Rp100)</th>
                       <th class="py-3">Ubah Status</th>
                       <th class="py-3 text-right">Detail</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-[#eef4ef]">
-                    ${state.orders.map(o => `
-                      <tr>
-                        <td class="py-3.5 font-bold">${escapeHtml(o.orderNumber)}</td>
-                        <td class="py-3.5">
-                          <p class="font-bold">${escapeHtml(o.customerName)}</p>
-                          <p class="text-[11px] text-[#4e6355]">${escapeHtml(o.customerWhatsapp)}</p>
-                        </td>
-                        <td class="py-3.5 font-extrabold text-[#2d5a3c]">${formatRupiah(o.totalAmount)}</td>
-                        <td class="py-3.5">
-                          <select onchange="updateAdminOrderStatus('${o.id}', this.value)" class="px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs font-bold bg-[#f4f7f4]">
-                            ${ORDER_STATUSES.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('')}
-                          </select>
-                        </td>
-                        <td class="py-3.5 text-right">
-                          <button onclick="openOrderInspectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-bold">Lihat Detail</button>
-                        </td>
-                      </tr>
-                    `).join('')}
+                    ${state.orders.map(o => {
+                      const fin = getOrderFinancialBreakdown(o);
+                      return `
+                        <tr>
+                          <td class="py-3.5 font-bold">${escapeHtml(o.orderNumber)}</td>
+                          <td class="py-3.5">
+                            <p class="font-bold">${escapeHtml(o.customerName)}</p>
+                            <p class="text-[11px] text-[#4e6355]">${escapeHtml(o.customerWhatsapp)}</p>
+                          </td>
+                          <td class="py-3.5 text-[11px] text-[#4e6355]">
+                            <div>${escapeHtml(formatOrderDateID(o.serverCreatedAt || o.createdAt))}</div>
+                            <div>${escapeHtml(formatOrderTimeWIB(o.serverCreatedAt || o.createdAt))}</div>
+                          </td>
+                          <td class="py-3.5">
+                            <span class="price-display font-bold text-[#2d5a3c] block">${formatRupiah(fin.totalAmount)}</span>
+                            <span class="text-[10px] text-[#4e6355]">(Produk ${formatRupiah(fin.subtotalAmount)} + Fee ${formatRupiah(fin.serviceFee)})</span>
+                          </td>
+                          <td class="py-3.5">
+                            <select onchange="updateAdminOrderStatus('${o.id}', this.value)" class="px-2.5 py-1.5 rounded-lg border border-[#d5e3d6] text-xs font-bold bg-[#f4f7f4]">
+                              ${ORDER_STATUSES.map(st => `<option value="${st}" ${o.status === st ? 'selected' : ''}>${st}</option>`).join('')}
+                            </select>
+                          </td>
+                          <td class="py-3.5 text-right">
+                            <button onclick="openOrderInspectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-semibold">Lihat Detail</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
                   </tbody>
                 </table>
               </div>
@@ -3020,29 +3282,36 @@ function confirmOrderPayment(orderId) {
         return `
           <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-5 shadow-2xs">
             <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">12. Verifikasi Pembayaran</h2>
-              <p class="text-xs text-[#4e6355]">Validasi bukti transfer pelanggan sebelum mengubah status menjadi Paid.</p>
+              <h2 class="text-xl font-bold text-[#181f1a]">12. Verifikasi Pembayaran</h2>
+              <p class="text-xs text-[#4e6355]">Validasi bukti transfer pelanggan sebelum mengubah status menjadi Paid (otomatis mencatat Tanggal Pembayaran server).</p>
             </div>
             ${list.length === 0 ? `<p class="text-xs text-[#4e6355] py-10 text-center">Belum ada bukti pembayaran untuk diverifikasi.</p>` : `
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                ${list.map(o => `
-                  <div class="border border-[#d5e3d6] rounded-2xl p-5 space-y-3.5 bg-[#f4f7f4]">
-                    <div class="flex items-start justify-between">
-                      <div>
-                        <span class="text-xs font-extrabold text-[#2d5a3c]">${escapeHtml(o.orderNumber)}</span>
-                        <h4 class="font-bold text-sm">${escapeHtml(o.customerName)}</h4>
-                        <p class="text-xs text-[#4e6355]">Metode: ${escapeHtml(o.paymentMethod || '-')}</p>
+                ${list.map(o => {
+                  const fin = getOrderFinancialBreakdown(o);
+                  return `
+                    <div class="border border-[#d5e3d6] rounded-2xl p-5 space-y-3.5 bg-[#f4f7f4]">
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <span class="text-xs font-bold text-[#2d5a3c]">${escapeHtml(o.orderNumber)}</span>
+                          <h4 class="font-bold text-sm">${escapeHtml(o.customerName)}</h4>
+                          <p class="text-xs text-[#4e6355]">Metode: ${escapeHtml(o.paymentMethod || '-')}</p>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
                       </div>
-                      <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(o.status)}">${escapeHtml(o.status)}</span>
+                      <div class="text-xs space-y-0.5">
+                        <p class="price-display text-base font-bold text-[#2d5a3c]">${formatRupiah(fin.totalAmount)}</p>
+                        <p class="text-[11px] text-[#4e6355]">Harga Produk: ${formatRupiah(fin.subtotalAmount)} • Fee Layanan: ${formatRupiah(fin.serviceFee)}</p>
+                      </div>
+                      ${renderOrderTimestampRows(o)}
+                      ${o.paymentProofImage ? `<img src="${o.paymentProofImage}" alt="Bukti" class="w-full max-h-52 object-contain rounded-xl border border-[#d5e3d6] bg-white p-2" />` : ''}
+                      <div class="flex gap-2">
+                        <button onclick="updateAdminOrderStatus('${o.id}', 'Paid')" class="flex-1 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-semibold">Setujui (Paid)</button>
+                        <button onclick="updateAdminOrderStatus('${o.id}', 'Waiting for Payment')" class="px-4 py-2.5 rounded-xl bg-red-50 text-[#d94e4e] hover:bg-red-100 text-xs font-semibold">Tolak</button>
+                      </div>
                     </div>
-                    <p class="text-base font-extrabold">${formatRupiah(o.totalAmount)}</p>
-                    ${o.paymentProofImage ? `<img src="${o.paymentProofImage}" alt="Bukti" class="w-full max-h-52 object-contain rounded-xl border border-[#d5e3d6] bg-white p-2" />` : ''}
-                    <div class="flex gap-2">
-                      <button onclick="updateAdminOrderStatus('${o.id}', 'Paid')" class="flex-1 py-2.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white text-xs font-bold">Setujui (Paid)</button>
-                      <button onclick="updateAdminOrderStatus('${o.id}', 'Waiting for Payment')" class="px-4 py-2.5 rounded-xl bg-red-50 text-[#d94e4e] hover:bg-red-100 text-xs font-bold">Tolak</button>
-                    </div>
-                  </div>
-                `).join('')}
+                  `;
+                }).join('')}
               </div>
             `}
           </div>
@@ -3055,7 +3324,7 @@ function confirmOrderPayment(orderId) {
         return `
           <form onsubmit="saveAdminPaymentSettings(event)" class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
             <div>
-              <h2 class="text-xl font-extrabold text-[#181f1a]">13. Pengaturan Pembayaran</h2>
+              <h2 class="text-xl font-bold text-[#181f1a]">13. Pengaturan Pembayaran</h2>
               <p class="text-xs text-[#4e6355]">Isi informasi QRIS, akun DANA, dan rekening SeaBank asli milik Anda (tanpa data fiktif).</p>
             </div>
 
@@ -3065,7 +3334,7 @@ function confirmOrderPayment(orderId) {
                 <div class="space-y-2">
                   <label class="block text-xs font-semibold">Nama Merchant QRIS</label>
                   <input id="set-qris-name" type="text" value="${escapeHtml(pay.QRIS?.merchantName || '')}" placeholder="Nama Merchant QRIS" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
-                  <label class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2d5a3c] text-white text-xs font-bold cursor-pointer">
+                  <label class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2d5a3c] text-white text-xs font-semibold cursor-pointer">
                     <i data-lucide="upload" class="w-4 h-4"></i>
                     <span>Unggah Gambar QRIS</span>
                     <input type="file" accept="image/*" onchange="handleAdminQrisUpload(this)" class="hidden" />
@@ -3108,7 +3377,7 @@ function confirmOrderPayment(orderId) {
               <input id="set-webhook-url" type="url" value="${escapeHtml(pay.gatewayWebhookUrl || '')}" placeholder="https://api.domainanda.com/webhook/payment" class="w-full px-3.5 py-2 rounded-xl border border-[#d5e3d6] bg-white text-xs" />
             </div>
 
-            <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Pengaturan Pembayaran</button>
+            <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Simpan Pengaturan Pembayaran</button>
           </form>
         `;
       }
@@ -3120,15 +3389,15 @@ function confirmOrderPayment(orderId) {
           <div class="space-y-6">
             <form onsubmit="saveAdminWebsiteSettings(event)" class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-6 shadow-2xs">
               <div>
-                <h2 class="text-xl font-extrabold text-[#181f1a]">14. Pengaturan Website & Profil Admin</h2>
+                <h2 class="text-xl font-bold text-[#181f1a]">14. Pengaturan Website & Profil Admin</h2>
                 <p class="text-xs text-[#4e6355]">Kelola logo toko, banner utama, foto profil admin, kontak WhatsApp, serta kredensial login admin.</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
                   <p class="text-xs font-bold">Logo Toko</p>
-                  ${s.logoImage ? `<img src="${s.logoImage}" class="w-16 h-16 mx-auto rounded-xl object-cover" />` : `<div class="w-16 h-16 mx-auto rounded-xl bg-[#2d5a3c] text-white flex items-center justify-center font-bold text-xl">G</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
+                  ${s.logoImage ? `<img src="${s.logoImage}" class="w-16 h-16 mx-auto rounded-xl object-cover" />` : `<div class="store-logo-text w-16 h-16 mx-auto rounded-xl bg-[#2d5a3c] text-white flex items-center justify-center font-bold text-xl">C</div>`}
+                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-semibold cursor-pointer">
                     Upload Logo
                     <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('logoImage', this)" class="hidden" />
                   </label>
@@ -3136,14 +3405,14 @@ function confirmOrderPayment(orderId) {
 
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
                   <p class="text-xs font-bold">Banner Hero (Canva)</p>
-                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover border border-[#d5e3d6]" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Matcha</div>`}
+                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover border border-[#d5e3d6]" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Theme</div>`}
                   <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                    <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
+                    <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-semibold cursor-pointer">
                       Upload Banner
                       <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('heroBannerImage', this)" class="hidden" />
                     </label>
                     ${s.heroBannerImage ? `
-                      <button type="button" onclick="removeHeroBanner()" class="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-[#d94e4e] text-xs font-bold">
+                      <button type="button" onclick="removeHeroBanner()" class="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-[#d94e4e] text-xs font-semibold">
                         Hapus
                       </button>
                     ` : ''}
@@ -3153,7 +3422,7 @@ function confirmOrderPayment(orderId) {
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
                   <p class="text-xs font-bold">Foto Profil Admin</p>
                   ${state.adminAuth.adminAvatar ? `<img src="${state.adminAuth.adminAvatar}" class="w-16 h-16 mx-auto rounded-full object-cover" />` : `<div class="w-16 h-16 mx-auto rounded-full bg-[#4a7c59] text-white flex items-center justify-center font-bold text-xl">A</div>`}
-                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer">
+                  <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] text-xs font-semibold cursor-pointer">
                     Upload Foto Admin
                     <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('adminAvatar', this)" class="hidden" />
                   </label>
@@ -3187,27 +3456,27 @@ function confirmOrderPayment(orderId) {
                 </div>
               </div>
 
-              <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Pengaturan Website</button>
+              <button type="submit" class="px-6 py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Simpan Pengaturan Website</button>
             </form>
 
             <!-- PANEL PANDUAN FIREBASE -->
             <div class="bg-white border border-[#d5e3d6] rounded-3xl p-6 space-y-3 shadow-2xs">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Struktur Koleksi Cloud Firestore & Security Rules</h3>
+              <h3 class="font-bold text-base text-[#181f1a]">Struktur Koleksi Cloud Firestore & Security Rules</h3>
               <p class="text-xs text-[#4e6355] leading-relaxed">
-                Saat ini website berjalan menggunakan penyimpanan browser (<code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">localStorage</code>) agar langsung berfungsi tanpa perlu setup eksternal. Untuk menghubungkan ke proyek Firebase produksi Anda, gunakan struktur koleksi <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Categories</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Products</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">ProductVariants</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Orders</code>, <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">Payments</code>, dan <code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">StoreSettings</code> dengan aturan keamanan berikut:
+                Website terhubung real-time ke Cloud Firestore (<code class="bg-[#f4f7f4] px-1.5 py-0.5 rounded">cifcufs-store</code>) untuk menyimpan pesanan, timestamp server WIB, dan status verifikasi pembayaran.
               </p>
               <pre class="p-4 rounded-2xl bg-[#181f1a] text-[#95d1a6] text-[11px] overflow-x-auto leading-relaxed">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /Products/{docId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-    match /Orders/{docId} {
+    match /orders/{docId} {
       allow create, read: if true;
       allow update, delete: if request.auth != null;
     }
-    match /StoreSettings/{docId} {
+    match /reviews/{docId} {
+      allow create, read: if true;
+      allow update, delete: if request.auth != null;
+    }
+    match /store_config/{docId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
@@ -3250,7 +3519,7 @@ service cloud.firestore {
         <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">${existing ? 'Edit Produk / Jasa' : 'Tambah Produk / Jasa Baru'}</h3>
+              <h3 class="font-bold text-base text-[#181f1a]">${existing ? 'Edit Produk / Jasa' : 'Tambah Produk / Jasa Baru'}</h3>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <form onsubmit="saveAdminProductForm(event, '${prod.id}', ${Boolean(existing)})" class="p-6 space-y-4 max-h-[82vh] overflow-y-auto">
@@ -3292,7 +3561,7 @@ service cloud.firestore {
                   <div id="pf-img-preview">
                     ${tempProductImage ? `<img src="${tempProductImage}" class="w-14 h-14 rounded-xl object-cover border border-[#d5e3d6]" />` : ''}
                   </div>
-                  <label class="px-4 py-2 rounded-xl bg-[#e6efe6] text-[#2d5a3c] text-xs font-bold cursor-pointer inline-flex items-center gap-1.5">
+                  <label class="px-4 py-2 rounded-xl bg-[#e6efe6] text-[#2d5a3c] text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5">
                     <i data-lucide="image" class="w-4 h-4"></i>
                     <span>Unggah Gambar Produk</span>
                     <input type="file" accept="image/*" onchange="handleProductImageUpload(this)" class="hidden" />
@@ -3311,7 +3580,7 @@ service cloud.firestore {
                 </label>
               </div>
 
-              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm">Simpan Produk</button>
+              <button type="submit" class="w-full py-3 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm">Simpan Produk</button>
             </form>
           </div>
         </div>
@@ -3375,7 +3644,8 @@ service cloud.firestore {
         });
       }
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       closeModal();
       renderApp();
       showToast(`Produk "${name}" berhasil disimpan.`);
@@ -3383,14 +3653,16 @@ service cloud.firestore {
 
     function toggleAdminProductActive(prodId) {
       state.products = state.products.map(p => p.id === prodId ? { ...p, active: !p.active } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Status produk diperbarui.');
     }
 
     function deleteAdminProduct(prodId) {
       state.products = state.products.filter(p => p.id !== prodId);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Produk dihapus dari katalog.');
     }
@@ -3414,7 +3686,8 @@ service cloud.firestore {
         }]
       } : p);
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Variasi baru berhasil ditambahkan.');
     }
@@ -3424,7 +3697,8 @@ service cloud.firestore {
         ...p,
         variants: p.variants.map(v => v.id === varId ? { ...v, stock: v.stock === 'Habis' ? 'Tersedia' : 'Habis' } : v)
       } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Stok variasi diperbarui.');
     }
@@ -3434,7 +3708,8 @@ service cloud.firestore {
         ...p,
         variants: p.variants.filter(v => v.id !== varId)
       } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Variasi dihapus.');
     }
@@ -3456,18 +3731,45 @@ service cloud.firestore {
         return { ...p, variants: updatedVars };
       });
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      syncCatalogToCloud();
       renderApp();
       showToast('Harga variasi berhasil disimpan & langsung tampil di katalog!');
     }
 
     function updateAdminOrderStatus(orderId, newStatus) {
-      state.orders = state.orders.map(o => o.id === orderId ? { ...o, status: newStatus, updatedAt: new Date().toISOString() } : o);
+      const nowIso = new Date().toISOString();
+      const verifiedStatuses = ['Paid', 'In Progress', 'Revision', 'Completed'];
+
+      state.orders = state.orders.map(o => {
+        if (o.id !== orderId) return o;
+        let nextPaidAt = o.paidAt || null;
+        if (newStatus === 'Paid' || (verifiedStatuses.includes(newStatus) && !nextPaidAt)) {
+          nextPaidAt = nowIso;
+        } else if (!verifiedStatuses.includes(newStatus)) {
+          nextPaidAt = null;
+        }
+        return {
+          ...o,
+          status: newStatus,
+          paidAt: nextPaidAt,
+          updatedAt: nowIso
+        };
+      });
+
       saveToStorage(STORAGE_KEYS.ORDERS, state.orders);
-      updateOrderInDB(orderId, {
-  status: newStatus,
-  updatedAt: new Date().toISOString()
-});
+
+      const targetOrder = state.orders.find(o => o.id === orderId);
+      const dbPatch = {
+        status: newStatus,
+        paidAt: targetOrder?.paidAt || null,
+        updatedAt: nowIso
+      };
+      if (!verifiedStatuses.includes(newStatus)) {
+        dbPatch.serverPaidAt = null;
+      }
+      updateOrderInDB(orderId, dbPatch);
+
       renderApp();
       showToast(`Status pesanan diperbarui ke "${newStatus}".`);
     }
@@ -3475,31 +3777,37 @@ service cloud.firestore {
     function openOrderInspectModal(orderId) {
       const o = state.orders.find(ord => ord.id === orderId);
       if (!o) return;
+      const { subtotalAmount, serviceFee, totalAmount } = getOrderFinancialBreakdown(o);
+
       document.getElementById('modal-root').innerHTML = `
         <div class="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-4">
           <div class="bg-white border border-[#d5e3d6] rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl animate-fade-in">
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
-              <h3 class="font-extrabold text-base text-[#181f1a]">Detail Pesanan ${escapeHtml(o.orderNumber)}</h3>
+              <h3 class="font-bold text-base text-[#181f1a]">Detail Pesanan ${escapeHtml(o.orderNumber)}</h3>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
-              <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-1">
+              <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-1.5">
                 <p><strong>Pelanggan:</strong> ${escapeHtml(o.customerName)}</p>
                 <p><strong>WhatsApp:</strong> ${escapeHtml(o.customerWhatsapp)}</p>
                 <p><strong>Metode Bayar:</strong> ${escapeHtml(o.paymentMethod || '-')}</p>
-                <p><strong>Status:</strong> ${escapeHtml(o.status)}</p>
-                ${o.customerNotes ? `<p><strong>Catatan:</strong> ${escapeHtml(o.customerNotes)}</p>` : ''}
+                <p><strong>Status Pesanan:</strong> ${escapeHtml(o.status)}</p>
+                <div class="pt-2 mt-2 border-t border-[#e6efe6]">
+                  ${renderOrderTimestampRows(o)}
+                </div>
+                ${o.customerNotes ? `<p class="pt-1"><strong>Catatan:</strong> ${escapeHtml(o.customerNotes)}</p>` : ''}
               </div>
+
               <div class="space-y-2.5">
                 ${(o.items || []).map(it => `
                   <div class="p-4 rounded-2xl border border-[#d5e3d6] space-y-1">
-                    <p class="font-extrabold text-sm">${escapeHtml(it.productName)} (${escapeHtml(it.plan)} - ${escapeHtml(it.duration)}) x${it.quantity}</p>
-                    <p class="font-bold text-[#2d5a3c]">Subtotal: ${formatRupiah(it.subtotal)}</p>
+                    <p class="product-title font-bold text-sm">${escapeHtml(it.productName)} (${escapeHtml(it.plan)} - ${escapeHtml(it.duration)}) x${it.quantity}</p>
+                    <p class="price-display font-bold text-[#2d5a3c]">Subtotal: ${formatRupiah(it.subtotal)}</p>
                     ${it.customBrief?.targetAccount ? `<p><strong>Target Akun/Link:</strong> ${escapeHtml(it.customBrief.targetAccount)}</p>` : ''}
                     ${it.customBrief?.deadline ? `<p><strong>Deadline:</strong> ${escapeHtml(it.customBrief.deadline)}</p>` : ''}
                     ${it.customBrief?.briefDescription ? `<p><strong>Brief:</strong> ${escapeHtml(it.customBrief.briefDescription)}</p>` : ''}
                     ${it.customBrief?.referenceFile ? `
-                      <a href="${it.customBrief.referenceFile.dataUrl}" download="${escapeHtml(it.customBrief.referenceFile.name)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-bold">
+                      <a href="${it.customBrief.referenceFile.dataUrl}" download="${escapeHtml(it.customBrief.referenceFile.name)}" class="inline-flex items-center gap-1.5 px-3 py-1.5 mt-1 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-semibold">
                         <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                         <span>Unduh File Referensi: ${escapeHtml(it.customBrief.referenceFile.name)}</span>
                       </a>
@@ -3507,6 +3815,24 @@ service cloud.firestore {
                   </div>
                 `).join('')}
               </div>
+
+              <!-- RINCIAN PEMBAYARAN ADMIN -->
+              <div class="payment-info-text p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] space-y-1.5">
+                <p class="font-bold uppercase tracking-wider text-[#2d5a3c]">Rincian Pembayaran</p>
+                <div class="flex items-center justify-between text-[#4e6355]">
+                  <span>Harga Produk</span>
+                  <span class="price-display font-bold text-[#181f1a]">${formatRupiah(subtotalAmount)}</span>
+                </div>
+                <div class="flex items-center justify-between text-[#4e6355]">
+                  <span>Fee Layanan</span>
+                  <span class="price-display font-bold text-[#2d5a3c]">${formatRupiah(serviceFee)}</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-[#d5e3d6] text-sm font-bold">
+                  <span>Total Pembayaran</span>
+                  <span class="price-display text-[#2d5a3c]">${formatRupiah(totalAmount)}</span>
+                </div>
+              </div>
+
               ${o.paymentProofImage ? `
                 <div>
                   <p class="font-bold mb-1.5">Bukti Transfer:</p>
@@ -3593,7 +3919,7 @@ service cloud.firestore {
       state.settings.whatsappNumber = waRawInput || '0813-8598-2311';
       state.settings.whatsappRaw = waRawInput.replace(/\D/g, '').replace(/^0/, '62') || '6281385982311';
 
-      state.adminAuth.adminName = document.getElementById('web-adm-name').value.trim() || 'Admin GALEYN';
+      state.adminAuth.adminName = document.getElementById('web-adm-name').value.trim() || 'Admin CIFCUFS';
       state.adminAuth.email = document.getElementById('web-adm-email').value.trim() || 'admin@galeynstore.id';
       const newPass = document.getElementById('web-adm-pass').value;
       if (newPass && newPass.length >= 4) {
@@ -3607,7 +3933,6 @@ service cloud.firestore {
       showToast('Pengaturan website & akun admin berhasil disimpan!');
     }
 
-    // =========================================================================
     // =========================================================================
     // FORM ULASAN PELANGGAN REAL-TIME
     // =========================================================================
@@ -3629,7 +3954,7 @@ service cloud.firestore {
             <div class="px-6 py-4 bg-[#f4f7f4] border-b border-[#d5e3d6] flex items-center justify-between">
               <div>
                 <span class="text-[11px] font-bold uppercase tracking-wider text-[#4a7c59]">CIFCUFS STORE</span>
-                <h3 class="font-extrabold text-base text-[#181f1a]">Tulis Ulasan Pelanggan</h3>
+                <h3 class="font-bold text-base text-[#181f1a]">Tulis Ulasan Pelanggan</h3>
               </div>
               <button onclick="closeModal()" class="p-2 rounded-xl hover:bg-[#e6efe6]"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -3673,7 +3998,7 @@ service cloud.firestore {
                 <textarea id="rev-text" rows="3" required placeholder="Ceritakan pengalaman transaksi Anda di CIFCUFS STORE..." class="w-full px-3.5 py-2.5 rounded-xl border border-[#d5e3d6] text-sm focus:border-[#4a7c59] focus:outline-none"></textarea>
               </div>
 
-              <button type="submit" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-bold text-sm shadow-sm">
+              <button type="submit" class="w-full py-3.5 rounded-xl bg-[#2d5a3c] hover:bg-[#4a7c59] text-white font-semibold text-sm shadow-sm">
                 Kirim & Tampilkan Ulasan
               </button>
             </form>
