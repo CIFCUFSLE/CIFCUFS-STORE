@@ -1368,90 +1368,7 @@
       if (timeEl) timeEl.textContent = timeStr;
     }
 
-    const HERO_SLIDE_TOTAL = 3;
-    let heroAutoplayTimer = null;
-    let heroSliderPaused = false;
-    let heroTouchStartX = 0;
-    let heroTouchEndX = 0;
-
-    function updateHeroSliderDOM() {
-      const track = document.getElementById('hero-slider-track');
-      if (track) {
-        track.style.transform = `translateX(-${state.heroSlideIndex * 100}%)`;
-      }
-      for (let i = 0; i < HERO_SLIDE_TOTAL; i++) {
-        const dot = document.getElementById(`hero-dot-${i}`);
-        if (!dot) continue;
-        if (i === state.heroSlideIndex) {
-          dot.className = 'hero-dot-btn w-8 bg-[#873BFA] shadow-[0_0_12px_rgba(135,59,250,0.85)]';
-          dot.setAttribute('aria-current', 'true');
-        } else {
-          dot.className = 'hero-dot-btn w-2.5 bg-white/30 hover:bg-[#B88AFF]/70';
-          dot.removeAttribute('aria-current');
-        }
-      }
-    }
-
-    function goToHeroSlide(index) {
-      const normalized = ((index % HERO_SLIDE_TOTAL) + HERO_SLIDE_TOTAL) % HERO_SLIDE_TOTAL;
-      state.heroSlideIndex = normalized;
-      updateHeroSliderDOM();
-      restartHeroAutoplay();
-    }
-
-    function nextHeroSlide() {
-      goToHeroSlide(state.heroSlideIndex + 1);
-    }
-
-    function prevHeroSlide() {
-      goToHeroSlide(state.heroSlideIndex - 1);
-    }
-
-    function pauseHeroAutoplay() {
-      heroSliderPaused = true;
-    }
-
-    function resumeHeroAutoplay() {
-      heroSliderPaused = false;
-    }
-
-    function restartHeroAutoplay() {
-      if (heroAutoplayTimer) {
-        clearInterval(heroAutoplayTimer);
-      }
-      heroAutoplayTimer = setInterval(() => {
-        if (state.activePage !== 'home' || heroSliderPaused) return;
-        const track = document.getElementById('hero-slider-track');
-        if (!track) return;
-        state.heroSlideIndex = (state.heroSlideIndex + 1) % HERO_SLIDE_TOTAL;
-        updateHeroSliderDOM();
-      }, 5000);
-    }
-
-    function handleHeroTouchStart(e) {
-      if (!e.touches || !e.touches[0]) return;
-      heroTouchStartX = e.touches[0].clientX;
-      heroTouchEndX = heroTouchStartX;
-      pauseHeroAutoplay();
-    }
-
-    function handleHeroTouchMove(e) {
-      if (!e.touches || !e.touches[0]) return;
-      heroTouchEndX = e.touches[0].clientX;
-    }
-
-    function handleHeroTouchEnd() {
-      const diffX = heroTouchStartX - heroTouchEndX;
-      if (Math.abs(diffX) > 45) {
-        if (diffX > 0) {
-          nextHeroSlide();
-        } else {
-          prevHeroSlide();
-        }
-      }
-      resumeHeroAutoplay();
-    }
-
+    
     // =========================================================================
     // 4. RENDER HEADER, NAVBAR & FOOTER
     // =========================================================================
@@ -1653,224 +1570,6 @@
       ];
 
       // SLIDE 1: MAIN BANNER (Mempertahankan banner utama yang sudah terpasang saat ini)
-      const slide1Html = s.heroBannerImage ? `
-        <div class="hero-slide-item">
-          <div class="w-full h-full flex items-center justify-center bg-[#090810]">
-            <img
-              src="${s.heroBannerImage}"
-              alt="Banner ${escapeHtml(s.storeName)}"
-              class="w-full h-auto block object-contain"
-            />
-          </div>
-        </div>
-      ` : `
-        <div class="hero-slide-item bg-gradient-to-br from-[#111018] via-[#1c1433] to-[#2e1759] text-white">
-          <div class="px-6 sm:px-12 lg:px-14 py-10 sm:py-14 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center min-h-[340px] sm:min-h-[420px]">
-            <div class="lg:col-span-7 space-y-5">
-              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#873BFA]/20 border border-[#A970FF]/40 text-[#B88AFF] text-xs font-semibold">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                <span>${escapeHtml(s.tagline)}</span>
-              </div>
-              <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
-                Solusi Aplikasi Premium, Kreatif & Digital dalam <span class="text-[#B88AFF]">Satu Tempat.</span>
-              </h1>
-              <p class="text-[#B8B5C5] text-xs sm:text-base max-w-2xl leading-relaxed">
-                Temukan layanan streaming, musik, AI produktivitas, tools editing profesional, pertumbuhan media sosial organik sesuai ketentuan platform, hingga jasa desain & pendampingan tugas terpercaya.
-              </p>
-              <div class="flex flex-wrap items-center gap-3 pt-1">
-                <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#7138D4] hover:bg-[#873BFA] text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg transition-all">
-                  <span>Jelajahi Katalog</span>
-                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
-                <button onclick="navigateTo('orders')" class="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-xs sm:text-sm transition-all">
-                  Lacak Pesanan
-                </button>
-              </div>
-            </div>
-
-            <div class="lg:col-span-5">
-              <div class="bg-[#171322]/90 backdrop-blur-md border border-[#873BFA]/30 rounded-2xl sm:rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl">
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold uppercase tracking-wider text-[#B88AFF]">Ekosistem Digital CIFCUFS</span>
-                  <span class="store-logo-text px-2.5 py-1 rounded-full bg-[#7138D4] text-white text-[10px] font-bold">${escapeHtml(s.storeName)}</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2.5">
-                  ${state.categories.map(cat => `
-                    <button onclick="navigateToCategory('${cat.slug}')" class="p-3 rounded-xl bg-[#0D0D14]/85 hover:bg-[#1e1730] border border-[#873BFA]/25 text-left transition-all group">
-                      <div class="w-7 h-7 rounded-lg bg-[#873BFA]/20 text-[#B88AFF] flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                        <i data-lucide="${cat.icon}" class="w-3.5 h-3.5"></i>
-                      </div>
-                      <p class="product-title font-bold text-xs text-white line-clamp-1">${escapeHtml(cat.name)}</p>
-                      <p class="text-[10px] text-[#B8B5C5] mt-0.5">${state.products.filter(p => p.categoryId === cat.id && p.active).length} Layanan</p>
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      // SLIDE 2: SPECIAL OFFER ("LEVEL UP YOUR DIGITAL LIFE.")
-      const slide2Html = `
-        <div class="hero-slide-item relative overflow-hidden bg-gradient-to-br from-[#090810] via-[#18112b] to-[#2f155e] text-white">
-          <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-[#873BFA]/25 blur-3xl pointer-events-none"></div>
-          <div class="absolute -bottom-24 left-10 w-72 h-72 rounded-full bg-[#7138D4]/20 blur-3xl pointer-events-none"></div>
-
-          <div class="relative px-6 sm:px-12 lg:px-16 py-10 sm:py-14 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[340px] sm:min-h-[420px]">
-            <div class="lg:col-span-7 space-y-5 z-10">
-              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#873BFA]/20 border border-[#B88AFF]/40 text-[#B88AFF] text-xs font-bold tracking-wider uppercase">
-                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                <span>SPECIAL OFFER • CIFCUFS STORE</span>
-              </div>
-              <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white">
-                LEVEL UP YOUR <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#B88AFF] via-[#A970FF] to-[#873BFA]">DIGITAL LIFE.</span>
-              </h2>
-              <p class="text-[#B8B5C5] text-sm sm:text-lg max-w-xl leading-relaxed">
-                Discover digital services and exclusive offers.
-              </p>
-              <div class="flex flex-wrap items-center gap-3 pt-2">
-                <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#873BFA] hover:bg-[#A970FF] text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-[0_0_24px_rgba(135,59,250,0.45)] transition-all">
-                  <span>Lihat Penawaran</span>
-                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
-                <button onclick="navigateToCategory('ai')" class="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/15 border border-[#B88AFF]/35 text-[#B88AFF] font-semibold text-xs sm:text-sm transition-all">
-                  Eksplorasi AI & Editing
-                </button>
-              </div>
-            </div>
-
-            <!-- FUTURISTIC 3D SMARTPHONE & HOLOGRAPHIC PURPLE VISUAL -->
-            <div class="lg:col-span-5 flex items-center justify-center z-10">
-              <div class="relative w-full max-w-[300px] sm:max-w-[340px] animate-float-slow">
-                <div class="absolute inset-0 bg-gradient-to-tr from-[#7138D4]/40 to-[#B88AFF]/30 rounded-full blur-2xl"></div>
-                <svg viewBox="0 0 360 300" class="relative w-full h-auto drop-shadow-[0_18px_36px_rgba(135,59,250,0.45)]" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="holoPhoneBody" x1="95" y1="28" x2="265" y2="272" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#281C45" />
-                      <stop offset="50%" stop-color="#141022" />
-                      <stop offset="100%" stop-color="#0D0D14" />
-                    </linearGradient>
-                    <linearGradient id="holoScreenGlow" x1="115" y1="45" x2="245" y2="245" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#873BFA" stop-opacity="0.85" />
-                      <stop offset="55%" stop-color="#7138D4" stop-opacity="0.35" />
-                      <stop offset="100%" stop-color="#171322" stop-opacity="0.95" />
-                    </linearGradient>
-                    <linearGradient id="holoRing" x1="40" y1="150" x2="320" y2="150" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#B88AFF" stop-opacity="0.1" />
-                      <stop offset="50%" stop-color="#A970FF" stop-opacity="0.9" />
-                      <stop offset="100%" stop-color="#873BFA" stop-opacity="0.1" />
-                    </linearGradient>
-                  </defs>
-                  <!-- Holographic Orbit Rings -->
-                  <ellipse cx="180" cy="155" rx="145" ry="44" transform="rotate(-16 180 155)" stroke="url(#holoRing)" stroke-width="2.5" />
-                  <ellipse cx="180" cy="155" rx="122" ry="34" transform="rotate(14 180 155)" stroke="#B88AFF" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="6 6" />
-                  <!-- 3D Smartphone Frame -->
-                  <rect x="114" y="24" width="132" height="252" rx="26" fill="url(#holoPhoneBody)" stroke="#A970FF" stroke-width="2.5" />
-                  <rect x="123" y="34" width="114" height="232" rx="20" fill="url(#holoScreenGlow)" stroke="#B88AFF" stroke-opacity="0.3" />
-                  <!-- Dynamic Island -->
-                  <rect x="158" y="43" width="44" height="9" rx="4.5" fill="#090810" />
-                  <!-- Holographic UI Cards inside Screen -->
-                  <rect x="135" y="68" width="90" height="48" rx="12" fill="#0D0D14" fill-opacity="0.72" stroke="#B88AFF" stroke-opacity="0.5" />
-                  <circle cx="155" cy="92" r="10" fill="#873BFA" />
-                  <rect x="172" y="84" width="42" height="6" rx="3" fill="#FFFFFF" />
-                  <rect x="172" y="95" width="30" height="5" rx="2.5" fill="#B88AFF" />
-                  <rect x="135" y="128" width="90" height="36" rx="10" fill="#171322" fill-opacity="0.85" stroke="#873BFA" stroke-opacity="0.5" />
-                  <rect x="146" y="142" width="54" height="7" rx="3.5" fill="#B88AFF" />
-                  <rect x="135" y="176" width="90" height="36" rx="10" fill="#171322" fill-opacity="0.85" stroke="#873BFA" stroke-opacity="0.5" />
-                  <rect x="146" y="190" width="66" height="7" rx="3.5" fill="#FFFFFF" fill-opacity="0.85" />
-                  <!-- Floating Holographic Badges -->
-                  <g transform="translate(46, 86)">
-                    <rect width="58" height="34" rx="10" fill="#171322" stroke="#A970FF" stroke-width="1.5" />
-                    <circle cx="17" cy="17" r="6" fill="#873BFA" />
-                    <rect x="28" y="14" width="20" height="6" rx="3" fill="#FFFFFF" />
-                  </g>
-                  <g transform="translate(256, 174)">
-                    <rect width="62" height="36" rx="10" fill="#171322" stroke="#B88AFF" stroke-width="1.5" />
-                    <circle cx="18" cy="18" r="6" fill="#A970FF" />
-                    <rect x="30" y="15" width="22" height="6" rx="3" fill="#B88AFF" />
-                  </g>
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      // SLIDE 3: OUR SERVICES ("YOUR DIGITAL NEEDS, ONE PLACE.")
-      const slide3Html = `
-        <div class="hero-slide-item relative overflow-hidden bg-gradient-to-br from-[#0D0D14] via-[#19122e] to-[#29144f] text-white">
-          <div class="absolute top-0 left-1/3 w-96 h-96 rounded-full bg-[#7138D4]/25 blur-3xl pointer-events-none"></div>
-          <div class="absolute bottom-0 right-12 w-80 h-80 rounded-full bg-[#873BFA]/20 blur-3xl pointer-events-none"></div>
-
-          <div class="relative px-6 sm:px-12 lg:px-16 py-10 sm:py-14 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[340px] sm:min-h-[420px]">
-            <div class="lg:col-span-7 space-y-5 z-10">
-              <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7138D4]/25 border border-[#A970FF]/40 text-[#B88AFF] text-xs font-bold tracking-wider uppercase">
-                <i data-lucide="layers" class="w-3.5 h-3.5"></i>
-                <span>OUR SERVICES • ECOSYSTEM</span>
-              </div>
-              <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white">
-                YOUR DIGITAL NEEDS, <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#A970FF] to-[#B88AFF]">ONE PLACE.</span>
-              </h2>
-              <p class="text-[#B8B5C5] text-sm sm:text-lg max-w-xl leading-relaxed">
-                Simple. Convenient. Made for your digital world.
-              </p>
-              <div class="flex flex-wrap items-center gap-3 pt-2">
-                <button onclick="navigateToCategory('all')" class="px-6 py-3 rounded-xl bg-[#7138D4] hover:bg-[#873BFA] text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-[0_0_24px_rgba(113,56,212,0.5)] transition-all">
-                  <span>Mulai Belanja</span>
-                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                </button>
-                <button onclick="navigateTo('about')" class="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/15 border border-[#A970FF]/35 text-white font-semibold text-xs sm:text-sm transition-all">
-                  Tentang Layanan Kami
-                </button>
-              </div>
-            </div>
-
-            <!-- FUTURISTIC 3D DIGITAL TECH CUBE & NODES VISUAL -->
-            <div class="lg:col-span-5 flex items-center justify-center z-10">
-              <div class="relative w-full max-w-[300px] sm:max-w-[340px] animate-float-slow">
-                <div class="absolute inset-0 bg-gradient-to-bl from-[#873BFA]/35 to-[#7138D4]/25 rounded-full blur-2xl"></div>
-                <svg viewBox="0 0 360 300" class="relative w-full h-auto drop-shadow-[0_18px_36px_rgba(135,59,250,0.45)]" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="cubeTop" x1="180" y1="52" x2="180" y2="148" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#B88AFF" />
-                      <stop offset="100%" stop-color="#873BFA" />
-                    </linearGradient>
-                    <linearGradient id="cubeLeft" x1="98" y1="100" x2="180" y2="245" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#7138D4" />
-                      <stop offset="100%" stop-color="#22153E" />
-                    </linearGradient>
-                    <linearGradient id="cubeRight" x1="262" y1="100" x2="180" y2="245" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stop-color="#4A248F" />
-                      <stop offset="100%" stop-color="#141022" />
-                    </linearGradient>
-                  </defs>
-                  <!-- Outer Tech Hexagon Grid -->
-                  <polygon points="180,22 292,86 292,214 180,278 68,214 68,86" stroke="#873BFA" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="5 5" />
-                  <circle cx="180" cy="150" r="108" stroke="#B88AFF" stroke-opacity="0.2" stroke-width="1.5" />
-                  <!-- 3D Isometric Core Cube -->
-                  <polygon points="180,56 260,102 180,148 100,102" fill="url(#cubeTop)" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="1.5" />
-                  <polygon points="100,102 180,148 180,242 100,196" fill="url(#cubeLeft)" stroke="#B88AFF" stroke-opacity="0.4" stroke-width="1.5" />
-                  <polygon points="260,102 180,148 180,242 260,196" fill="url(#cubeRight)" stroke="#A970FF" stroke-opacity="0.4" stroke-width="1.5" />
-                  <!-- Glowing Energy Core Lines -->
-                  <line x1="180" y1="148" x2="180" y2="242" stroke="#B88AFF" stroke-width="2" />
-                  <line x1="100" y1="102" x2="180" y2="148" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5" />
-                  <line x1="260" y1="102" x2="180" y2="148" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5" />
-                  <!-- Connected Service Nodes -->
-                  <circle cx="68" cy="86" r="12" fill="#171322" stroke="#A970FF" stroke-width="2" />
-                  <circle cx="68" cy="86" r="5" fill="#B88AFF" />
-                  <circle cx="292" cy="86" r="12" fill="#171322" stroke="#A970FF" stroke-width="2" />
-                  <circle cx="292" cy="86" r="5" fill="#873BFA" />
-                  <circle cx="68" cy="214" r="12" fill="#171322" stroke="#A970FF" stroke-width="2" />
-                  <circle cx="68" cy="214" r="5" fill="#873BFA" />
-                  <circle cx="292" cy="214" r="12" fill="#171322" stroke="#A970FF" stroke-width="2" />
-                  <circle cx="292" cy="214" r="5" fill="#B88AFF" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
 
       return `
         <div class="space-y-14 sm:space-y-16 pb-10">
@@ -1913,13 +1612,10 @@
           <!-- 2. HERO SECTION SLIDER — TEPAT 3 SLIDE -->
           <section aria-label="Hero Banner Slider" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 sm:-mt-10">
             <div
-              class="hero-slider-frame group"
-              onmouseenter="pauseHeroAutoplay()"
-              onmouseleave="resumeHeroAutoplay()"
-              ontouchstart="handleHeroTouchStart(event)"
-              ontouchmove="handleHeroTouchMove(event)"
-              ontouchend="handleHeroTouchEnd()"
-            >
+  class="hero-slider-frame group"
+  onmouseenter="pauseHeroAutoplay()"
+  onmouseleave="resumeHeroAutoplay()"
+>
              <!-- TRACK DINAMIS DARI FIREBASE (MAKSIMAL 4 SLIDE) -->
 <div id="hero-slider-track" class="hero-slider-track" style="transform: translateX(0%);">
   <div class="w-full h-full flex-shrink-0 flex flex-col items-center justify-center bg-[#111018] text-center p-6">
@@ -1947,20 +1643,8 @@
               >
                 <i data-lucide="chevron-right" class="w-5 h-5"></i>
               </button>
-
-              <div id="hero-slider-dots" class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#090810]/70 border border-[#873BFA]/30 backdrop-blur-md"></div>
-              <div class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#090810]/70 border border-[#873BFA]/30 backdrop-blur-md">
-                ${[0, 1, 2].map(idx => `
-                  <button
-                    id="hero-dot-${idx}"
-                    type="button"
-                    onclick="goToHeroSlide(${idx})"
-                    aria-label="Pilih Slide ${idx + 1}"
-                    ${idx === activeSlide ? 'aria-current="true"' : ''}
-                    class="hero-dot-btn ${idx === activeSlide ? 'w-8 bg-[#873BFA] shadow-[0_0_12px_rgba(135,59,250,0.85)]' : 'w-2.5 bg-white/30 hover:bg-[#B88AFF]/70'}"
-                  ></button>
-                `).join('')}
-              </div>
+              
+            <div id="hero-slider-dots" class="absolute bottom-3.5 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#090810]/70 border border-[#873BFA]/30 backdrop-blur-md"></div>
             </div>
           </section>
 
@@ -2415,7 +2099,7 @@
               ${!product.singleOptionMode && uniquePlans.length > 0 ? `
                 <div class="space-y-2">
                   <label class="block text-xs font-bold uppercase tracking-wider text-[#2d5a3c]">1. Pilih Tipe Paket / Plan</label>
-                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div class="grid grid-cols-2 sm:grid-cols-2 gap-2">
                     ${uniquePlans.map(plan => `
                       <button type="button" onclick="selectModalPlan('${escapeHtml(plan).replace(/'/g, "\\'")}')" class="px-3.5 py-2.5 rounded-xl border text-xs font-semibold text-left transition-all ${
                         modalVariantState.selectedPlan === plan
@@ -3903,7 +3587,7 @@
                 <p class="text-xs text-[#4e6355]">Kelola logo toko, banner utama, foto profil admin, kontak WhatsApp, serta kredensial login admin.</p>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
                   <p class="text-xs font-bold">Logo Toko</p>
                   ${s.logoImage ? `<img src="${s.logoImage}" class="w-16 h-16 mx-auto rounded-xl object-cover" />` : `<div class="store-logo-text w-16 h-16 mx-auto rounded-xl bg-[#2d5a3c] text-white flex items-center justify-center font-bold text-xl">C</div>`}
@@ -3913,21 +3597,7 @@
                   </label>
                 </div>
 
-                <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
-                  <p class="text-xs font-bold">Banner Hero (Slide 1)</p>
-                  ${s.heroBannerImage ? `<img src="${s.heroBannerImage}" class="w-full h-16 mx-auto rounded-xl object-cover border border-[#d5e3d6]" />` : `<div class="w-full h-16 rounded-xl bg-[#e6efe6] text-[#4a7c59] flex items-center justify-center text-xs font-semibold">Default Theme</div>`}
-                  <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                    <label class="inline-block px-3 py-1.5 rounded-lg bg-[#e6efe6] hover:bg-[#d5e3d6] text-[#2d5a3c] text-xs font-semibold cursor-pointer">
-                      Upload Banner
-                      <input type="file" accept="image/*" onchange="handleWebsiteAssetUpload('heroBannerImage', this)" class="hidden" />
-                    </label>
-                    ${s.heroBannerImage ? `
-                      <button type="button" onclick="removeHeroBanner()" class="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-[#d94e4e] text-xs font-semibold">
-                        Hapus
-                      </button>
-                    ` : ''}
-                  </div>
-                </div>
+            
 
                 <div class="p-4 rounded-2xl bg-[#f4f7f4] border border-[#d5e3d6] text-center space-y-2">
                   <p class="text-xs font-bold">Foto Profil Admin</p>
@@ -4585,18 +4255,22 @@ service cloud.firestore {
       renderTopAndNavbar();
       const mainEl = document.getElementById('app-main');
       if (state.activePage === 'home') {
-    mainEl.innerHTML = renderHomePage();
+        mainEl.innerHTML = renderHomePage();
         renderPublicHeroSlider();
-    renderPublicHeroSlider(); // <-- TAMBAHKAN BARIS INI
-  } else if (state.activePage === 'catalog') {
-    ...
-  } else if (state.activePage === 'admin') {
-    mainEl.innerHTML = renderAdminDashboard();
+      } else if (state.activePage === 'catalog') {
+        mainEl.innerHTML = renderCatalogPage();
+      } else if (state.activePage === 'payment') {
+        mainEl.innerHTML = renderPaymentPage();
+      } else if (state.activePage === 'orders') {
+        mainEl.innerHTML = renderOrdersPage();
+      } else if (state.activePage === 'about') {
+        mainEl.innerHTML = renderAboutPage();
+      } else if (state.activePage === 'admin') {
+        mainEl.innerHTML = renderAdminDashboard();
         renderAdminBannerManager();
-    renderAdminBannerManager(); // <-- TAMBAHKAN BARIS INI
-  }
-
-    // Boot Aplikasi & Deteksi Rute URL Admin (#admin / ?admin=1 / /admin)
+      }
+      if (window.lucide) lucide.createIcons();
+    }
     function checkAdminRedirectRoute() {
       const hash = window.location.hash.toLowerCase();
       const search = window.location.search.toLowerCase();
@@ -4619,7 +4293,6 @@ service cloud.firestore {
     renderApp();
     checkAdminRedirectRoute();
     checkAndExpireUnpaidOrders();
-    restartHeroAutoplay();
 
     // Update setiap 1 detik: Live Date & Digital Clock (WIB) + Countdown Batas Waktu Pembayaran
     setInterval(() => {
@@ -4968,16 +4641,16 @@ async function deleteHeroBanner(bannerId) {
   }
 }
  function escapeHtmlSafe(str) {
-   if (!str) return '';
-   return String(str)
-     .replace(/&/g, '&')
-     .replace(/</g, '<')
-     .replace(/>/g, '>')
-     .replace(/"/g, '"')
-     .replace(/'/g, ''');
- }
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '\u0026amp;')
+        .replace(/</g, '\u0026lt;')
+        .replace(/>/g, '\u0026gt;')
+        .replace(/"/g, '\u0026quot;')
+        .replace(/'/g, '\u0026#39;');
+    }
 
- initHeroBannerSync();
+    initHeroBannerSync();
   </script>
 </body>
 </html>
