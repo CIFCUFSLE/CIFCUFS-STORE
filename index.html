@@ -25,13 +25,17 @@
             display: ['Plus Jakarta Sans', 'sans-serif'],
           },
           colors: {
-            matcha: {
-              dark: '#181f1a',
-              ceremonial: '#2d5a3c',
-              sage: '#4a7c59',
-              tint: '#e6efe6',
-              cream: '#f4f7f4',
-              coral: '#d94e4e',
+            cyber: {
+              bg: '#090810',
+              nav: '#0D0D14',
+              sec: '#111018',
+              card: '#171322',
+              primary: '#7138D4',
+              electric: '#873BFA',
+              lavender: '#B88AFF',
+              glow: '#A970FF',
+              text: '#FFFFFF',
+              muted: '#B8B5C5',
             }
           }
         }
@@ -39,14 +43,35 @@
     };
   </script>
   <style>
-    body {
-      background-color: #f4f7f4;
-      color: #181f1a;
-      font-family: 'Inter', sans-serif;
+    :root {
+      --bg-main: #090810;
+      --bg-navbar: #0D0D14;
+      --bg-secondary: #111018;
+      --bg-card: #171322;
+      --purple-primary: #7138D4;
+      --purple-electric: #873BFA;
+      --purple-lavender: #B88AFF;
+      --purple-glow: #A970FF;
+      --text-primary: #FFFFFF;
+      --text-secondary: #B8B5C5;
+      --border-subtle: rgba(135, 59, 250, 0.24);
+      --border-strong: rgba(169, 112, 255, 0.55);
     }
+
+    body {
+      background-color: var(--bg-main) !important;
+      color: var(--text-primary) !important;
+      font-family: 'Inter', sans-serif;
+      background-image:
+        radial-gradient(circle at 15% 0%, rgba(113, 56, 212, 0.14) 0%, transparent 42%),
+        radial-gradient(circle at 85% 18%, rgba(135, 59, 250, 0.10) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
     h1, h2, h3, .font-heading {
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
+
     .no-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -54,6 +79,7 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -61,9 +87,251 @@
     .animate-fade-in {
       animation: fadeSlideUp 0.25s ease-out forwards;
     }
+
+    /* =======================================================================
+       DARK GAMING x ELECTRIC PURPLE GLOBAL THEME OVERRIDE ENGINE
+    ======================================================================== */
+
+    /* 1. Surfaces & Backgrounds */
+    #top-announcement {
+      background: linear-gradient(90deg, #171322 0%, #7138D4 50%, #171322 100%) !important;
+      color: var(--text-primary) !important;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    #main-navbar {
+      background-color: rgba(13, 13, 20, 0.92) !important;
+      border-bottom-color: var(--border-subtle) !important;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(135, 59, 250, 0.2) !important;
+    }
+
+    #main-footer {
+      background-color: var(--bg-navbar) !important;
+      color: var(--text-secondary) !important;
+      border-top-color: var(--border-subtle) !important;
+    }
+
+    .bg-white,
+    .bg-white\/95 {
+      background-color: var(--bg-card) !important;
+    }
+
+    .bg-\[\#f4f7f4\],
+    .bg-\[\#eef4ef\],
+    .bg-stone-100,
+    .bg-stone-200 {
+      background-color: var(--bg-secondary) !important;
+    }
+
+    .bg-\[\#e6efe6\],
+    .bg-\[\#d5e3d6\] {
+      background-color: rgba(113, 56, 212, 0.18) !important;
+    }
+
+    .bg-\[\#2d5a3c\],
+    .bg-\[\#181f1a\] {
+      background-color: var(--purple-primary) !important;
+    }
+
+    .bg-\[\#4a7c59\] {
+      background-color: var(--purple-electric) !important;
+    }
+
+    /* Gradient overrides */
+    .from-\[\#181f1a\],
+    .from-\[\#2d5a3c\] {
+      --tw-gradient-from: #171322 var(--tw-gradient-from-position) !important;
+      --tw-gradient-to: rgba(23, 19, 34, 0) var(--tw-gradient-to-position) !important;
+      --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+    }
+    .via-\[\#223629\] {
+      --tw-gradient-to: rgba(113, 56, 212, 0) var(--tw-gradient-to-position) !important;
+      --tw-gradient-stops: var(--tw-gradient-from), #261942 var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+    }
+    .to-\[\#2d5a3c\],
+    .to-\[\#4a7c59\] {
+      --tw-gradient-to: #7138D4 var(--tw-gradient-to-position) !important;
+    }
+    .from-\[\#e6efe6\] {
+      --tw-gradient-from: #1d1630 var(--tw-gradient-from-position) !important;
+      --tw-gradient-to: rgba(29, 22, 48, 0) var(--tw-gradient-to-position) !important;
+      --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+    }
+    .to-\[\#d2e3d4\] {
+      --tw-gradient-to: #2b1d4a var(--tw-gradient-to-position) !important;
+    }
+
+    /* 2. Borders & Dividers */
+    .border-\[\#d5e3d6\],
+    .border-\[\#eef4ef\],
+    .border-\[\#c6dec9\],
+    .border-\[\#e2ece3\],
+    .border-\[\#e6efe6\],
+    .border-\[\#253329\] {
+      border-color: var(--border-subtle) !important;
+    }
+
+    .border-\[\#2d5a3c\],
+    .border-\[\#4a7c59\] {
+      border-color: var(--purple-electric) !important;
+    }
+
+    .divide-\[\#eef4ef\] > :not([hidden]) ~ :not([hidden]) {
+      border-color: var(--border-subtle) !important;
+    }
+
+    .ring-\[\#2d5a3c\] {
+      --tw-ring-color: var(--purple-electric) !important;
+    }
+
+    /* 3. Typography & High-Contrast Readability */
+    .text-\[\#181f1a\] {
+      color: var(--text-primary) !important;
+    }
+
+    .text-\[\#43574a\],
+    .text-\[\#4e6355\],
+    .text-\[\#5e7365\],
+    .text-\[\#354c3d\],
+    .text-\[\#647568\],
+    .text-\[\#718174\],
+    .text-\[\#b3c7b8\],
+    .text-\[\#d2e3d6\],
+    .text-\[\#8ba391\],
+    .text-\[\#a3bda9\],
+    .text-stone-500,
+    .text-stone-700 {
+      color: var(--text-secondary) !important;
+    }
+
+    .text-\[\#2d5a3c\],
+    .text-\[\#4a7c59\],
+    .text-\[\#1e3827\],
+    .text-\[\#95c7a3\],
+    .text-\[\#95d1a6\],
+    .text-\[\#b6dec1\],
+    .text-\[\#88c299\],
+    .text-\[\#a3d1b1\] {
+      color: var(--purple-lavender) !important;
+    }
+
+    button.bg-\[\#2d5a3c\],
+    button.bg-\[\#4a7c59\],
+    a.bg-\[\#2d5a3c\],
+    a.bg-\[\#4a7c59\],
+    span.bg-\[\#2d5a3c\],
+    span.bg-\[\#4a7c59\] {
+      color: #FFFFFF !important;
+      box-shadow: 0 0 18px rgba(135, 59, 250, 0.32);
+    }
+
+    /* 4. Hover States & Electric Purple Glow */
+    .hover\:bg-\[\#4a7c59\]:hover,
+    .hover\:bg-\[\#5b946c\]:hover,
+    .hover\:bg-\[\#5c946d\]:hover,
+    .hover\:bg-\[\#2d5a3c\]:hover {
+      background-color: var(--purple-electric) !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 0 22px rgba(169, 112, 255, 0.5) !important;
+    }
+
+    .hover\:bg-\[\#e6efe6\]:hover,
+    .hover\:bg-\[\#d5e3d6\]:hover,
+    .hover\:bg-\[\#f4f7f4\]:hover {
+      background-color: rgba(135, 59, 250, 0.22) !important;
+      color: #FFFFFF !important;
+    }
+
+    .hover\:border-\[\#4a7c59\]:hover {
+      border-color: var(--purple-glow) !important;
+      box-shadow: 0 8px 28px rgba(135, 59, 250, 0.22) !important;
+    }
+
+    .group:hover .group-hover\:bg-\[\#2d5a3c\] {
+      background-color: var(--purple-electric) !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 0 18px rgba(169, 112, 255, 0.45);
+    }
+
+    .group:hover .group-hover\:text-\[\#2d5a3c\],
+    .hover\:text-\[\#2d5a3c\]:hover,
+    .hover\:text-\[\#4a7c59\]:hover {
+      color: var(--purple-glow) !important;
+    }
+
+    /* 5. Form Inputs, Selects & Textareas */
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      background-color: var(--bg-secondary) !important;
+      color: var(--text-primary) !important;
+      border-color: var(--border-subtle) !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #7d7891 !important;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--purple-electric) !important;
+      box-shadow: 0 0 0 3px rgba(135, 59, 250, 0.22) !important;
+      outline: none !important;
+    }
+
+    /* 6. Status Badges & Alert Boxes (Dark Mode Friendly) */
+    .bg-amber-50 {
+      background-color: rgba(245, 158, 11, 0.14) !important;
+      border-color: rgba(245, 158, 11, 0.35) !important;
+    }
+    .text-amber-800,
+    .text-amber-900 {
+      color: #fcd34d !important;
+    }
+
+    .bg-emerald-50 {
+      background-color: rgba(16, 185, 129, 0.15) !important;
+      border-color: rgba(16, 185, 129, 0.35) !important;
+    }
+    .text-emerald-700,
+    .text-emerald-800 {
+      color: #6ee7b7 !important;
+    }
+
+    .bg-sky-50 {
+      background-color: rgba(14, 165, 233, 0.15) !important;
+      border-color: rgba(14, 165, 233, 0.35) !important;
+    }
+    .text-sky-800 {
+      color: #7dd3fc !important;
+    }
+
+    .bg-purple-50 {
+      background-color: rgba(135, 59, 250, 0.2) !important;
+      border-color: rgba(169, 112, 255, 0.4) !important;
+    }
+    .text-purple-800 {
+      color: #d8b4fe !important;
+    }
+
+    .bg-red-50 {
+      background-color: rgba(239, 68, 68, 0.15) !important;
+      border-color: rgba(239, 68, 68, 0.35) !important;
+    }
+    .text-red-800,
+    .text-\[\#d94e4e\] {
+      color: #fca5a5 !important;
+    }
+
+    /* 7. Hero Banner Frame Glow */
+    section img[alt^="Banner"] {
+      box-shadow: 0 0 36px rgba(135, 59, 250, 0.28);
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col selection:bg-[#2d5a3c] selection:text-white">
+<body class="min-h-screen flex flex-col bg-[#090810] text-white selection:bg-[#873BFA] selection:text-white">
 
   <!-- TOP ANNOUNCEMENT BAR -->
   <div id="top-announcement" class="bg-[#2d5a3c] text-[#e6efe6] text-xs py-2 px-4 text-center font-medium"></div>
@@ -1072,7 +1340,7 @@ const PAYMENT_TIMEOUT_MS = 60 * 60 * 1000; // Batas waktu pembayaran 1 jam (60 m
                 <div class="lg:col-span-5">
                   <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl">
                     <div class="flex items-center justify-between">
-                      <span class="text-xs font-bold uppercase tracking-wider text-[#b6dec1]">Ekosistem Digital Matcha</span>
+                      <span class="text-xs font-bold uppercase tracking-wider text-[#b6dec1]">Ekosistem Digital CIFCUFS</span>
                       <span class="px-2.5 py-1 rounded-full bg-[#4a7c59] text-white text-[11px] font-bold">${escapeHtml(s.storeName)}</span>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
