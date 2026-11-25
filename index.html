@@ -611,7 +611,7 @@ function saveToStorage(key, value) {
       firestoreDB.collection('store_config').doc('catalog').onSnapshot((doc) => {
         if (doc.exists && Array.isArray(doc.data().products)) {
           state.products = doc.data().products;
-          saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+          saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
           if (['home', 'catalog', 'admin'].includes(state.activePage)) {
             renderApp();
           }
@@ -2254,8 +2254,7 @@ function confirmOrderPayment(orderId) {
       navigateTo('home');
       showToast('Anda telah keluar dari Admin Dashboard.');
     }
-    }
-
+    
     // =========================================================================
     // 11. ADMIN DASHBOARD (14 MENU LENGKAP)
     // =========================================================================
@@ -2976,7 +2975,7 @@ service cloud.firestore {
         });
       }
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       closeModal();
       renderApp();
       showToast(`Produk "${name}" berhasil disimpan.`);
@@ -2984,14 +2983,14 @@ service cloud.firestore {
 
     function toggleAdminProductActive(prodId) {
       state.products = state.products.map(p => p.id === prodId ? { ...p, active: !p.active } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Status produk diperbarui.');
     }
 
     function deleteAdminProduct(prodId) {
       state.products = state.products.filter(p => p.id !== prodId);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Produk dihapus dari katalog.');
     }
@@ -3015,7 +3014,7 @@ service cloud.firestore {
         }]
       } : p);
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Variasi baru berhasil ditambahkan.');
     }
@@ -3025,7 +3024,7 @@ service cloud.firestore {
         ...p,
         variants: p.variants.map(v => v.id === varId ? { ...v, stock: v.stock === 'Habis' ? 'Tersedia' : 'Habis' } : v)
       } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Stok variasi diperbarui.');
     }
@@ -3035,7 +3034,7 @@ service cloud.firestore {
         ...p,
         variants: p.variants.filter(v => v.id !== varId)
       } : p);
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Variasi dihapus.');
     }
@@ -3057,7 +3056,7 @@ service cloud.firestore {
         return { ...p, variants: updatedVars };
       });
 
-      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products);
+      saveToStorage(STORAGE_KEYS.PRODUCTS, state.products); syncCatalogToCloud();
       renderApp();
       showToast('Harga variasi berhasil disimpan & langsung tampil di katalog!');
     }
@@ -3127,6 +3126,7 @@ service cloud.firestore {
       readImageFileAsDataUrl(file, (dataUrl) => {
         state.settings.payments.QRIS.qrisImage = dataUrl;
         saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+        syncSettingsToCloud();
         renderApp();
         showToast('Gambar QRIS berhasil diunggah.');
       });
@@ -3141,6 +3141,7 @@ service cloud.firestore {
       state.settings.payments.SeaBank.accountName = document.getElementById('set-sea-name').value.trim();
       state.settings.payments.gatewayWebhookUrl = document.getElementById('set-webhook-url').value.trim();
       saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+      syncSettingsToCloud();
       showToast('Pengaturan pembayaran berhasil disimpan!');
     }
 
@@ -3153,8 +3154,9 @@ service cloud.firestore {
           saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
         } else {
           state.settings[field] = dataUrl;
-      saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
-      syncSettingsToCloud();
+          saveToStorage(STORAGE_KEYS.SETTINGS, state.settings);
+          syncSettingsToCloud();
+        }
         renderApp();
         showToast('Gambar berhasil diperbarui.');
       });
@@ -3390,30 +3392,14 @@ service cloud.firestore {
     }
 
     function checkAdminRedirectRoute() {
-      const params = new URLSearchParams(window.location.search);
-      const isFromAdminLogin = params.get('role') === 'admin' || window.location.hash === '#admin';
+  const params = new URLSearchParams(window.location.search);
 
-      if (isFromAdminLogin) {
-        state.adminAuth.isAuthenticated = true;
-        saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-        state.activePage = 'admin';
-        history.replaceState(null, '', window.location.pathname);
-        renderApp();
-        showToast('Selamat datang di Admin Dashboard!');
-      }
-
-      // Pantau sesi Firebase Auth jika tersedia
-      if (window.firebase && firebase.auth) {
-        firebase.auth().onAuthStateChanged((user) => {
-          if (user && !state.adminAuth.isAuthenticated && isFromAdminLogin) {
-            state.adminAuth.isAuthenticated = true;
-            saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
-            state.activePage = 'admin';
-            renderApp();
-          }
-        });
-      }
-    }
+  // Bersihkan parameter URL yang sebelumnya bisa
+  // digunakan untuk melewati login admin.
+  if (params.has('role') || window.location.hash === '#admin') {
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
 
     document.addEventListener('DOMContentLoaded', () => {
       renderApp();
