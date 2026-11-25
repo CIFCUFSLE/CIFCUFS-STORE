@@ -3392,15 +3392,23 @@ service cloud.firestore {
     }
 
     function checkAdminRedirectRoute() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('admin') === '1' || window.location.hash === '#admin') {
-      history.replaceState(null, '', window.location.pathname);
-      if (state.adminAuth.isAuthenticated) {
-        navigateTo('admin');
-      } else {
-        openAdminLoginModal();
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === '1' || window.location.hash === '#admin') {
+        history.replaceState(null, '', window.location.pathname);
+        if (state.adminAuth.isAuthenticated) {
+          navigateTo('admin');
+        } else {
+          openAdminLoginModal();
+        }
       }
     }
-  }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderApp();
+      initRealtimeFirestoreSync();
+      checkAdminRedirectRoute();
+    });
+
+  </script>
 </body>
 </html>
