@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — CIFCUFS STORE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #162b20; /* Tema Matcha Gelap CIFCUFS */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-white">
+
+  <!-- Kotak Login Admin -->
+  <div id="login-box" class="w-full max-w-md bg-[#1f3a2c] border border-[#2f5441] rounded-2xl p-8 shadow-2xl">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl bg-[#3c6e54] flex items-center justify-center font-bold text-lg text-white">
+        G
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-wide">CIFCUFS STORE</h1>
+        <p class="text-xs text-emerald-300/80">Portal Khusus Administrator</p>
+      </div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-2">Login Admin</h2>
+    <p class="text-sm text-gray-300 mb-6">Masuk untuk mengelola katalog, variasi harga, dan verifikasi pembayaran.</p>
+
+    <div id="error-msg" class="hidden mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 text-sm"></div>
+
+    <form id="admin-login-form" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-emerald-200 mb-1">Email Admin</label>
+        <input 
+          type="email" 
+          id="admin-email" 
+          required 
+          placeholder="admin@cifcufs.com"
+          class="w-full px-4 py-2.5 rounded-xl bg-[#14261c] border border-[#2f5441] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-400"
+        />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-emerald-200 mb-1">Password</label>
+        <input 
+          type="password" 
+          id="admin-password" 
+          required 
+          placeholder="••••••••"
+          class="w-full px-4 py-2.5 rounded-xl bg-[#14261c] border border-[#2f5441] text-white placeholder-gray-500 focus:outline-none focus:border-emerald-400"
+        />
+      </div>
+
+      <button 
+        type="submit" 
+        id="btn-submit"
+        class="w-full py-2.5 px-4 rounded-xl bg-[#4c8c6b] hover:bg-[#5aa37d] font-semibold text-white transition duration-200 shadow-lg cursor-pointer mt-2"
+      >
+        Masuk ke Dashboard Admin
+      </button>
+    </form>
+
+    <div class="mt-6 pt-4 border-t border-[#2f5441] flex justify-between items-center text-xs text-gray-400">
+      <a href="./index.html" class="hover:text-emerald-300 transition">← Kembali ke Toko</a>
+      <span>Matcha Ecosystem v1.0</span>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    // GANTI DENGAN CONFIG FIREBASE PROJECT 'cifcufs-store' MILIK ANDA
+    const firebaseConfig = {
+      apiKey: "API_KEY_ANDA",
+      authDomain: "cifcufs-store.firebaseapp.com",
+      projectId: "cifcufs-store",
+      storageBucket: "cifcufs-store.appspot.com",
+      messagingSenderId: "SENDER_ID_ANDA",
+      appId: "APP_ID_ANDA"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const form = document.getElementById('admin-login-form');
+    const errorBox = document.getElementById('error-msg');
+    const btnSubmit = document.getElementById('btn-submit');
+
+    // Jika admin sudah login sebelumnya, langsung arahkan ke dashboard/halaman utama
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Ubah tujuan redirect ini ke file dashboard admin Anda (misal: ./dashboard.html atau ./index.html?admin=true)
+        window.location.href = "./index.html?role=admin";
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorBox.classList.add('hidden');
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Memverifikasi...";
+
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // Berhasil login -> redirect ke halaman admin
+        window.location.href = "./index.html?role=admin";
+      } catch (error) {
+        errorBox.textContent = "Login gagal: Email atau password admin salah.";
+        errorBox.classList.remove('hidden');
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = "Masuk ke Dashboard Admin";
+      }
+    });
+  </script>
+</body>
+</html>
