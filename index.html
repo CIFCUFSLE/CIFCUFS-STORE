@@ -2598,15 +2598,19 @@
       const s = state.settings;
       const waClean = s.whatsappRaw || s.whatsappNumber.replace(/\D/g, '').replace(/^0/, '62');
 
-      const matched = state.orders.filter(o => {
-        const mNum = state.orderSearchNumber.trim()
-          ? o.orderNumber.toLowerCase().includes(state.orderSearchNumber.trim().toLowerCase())
-          : true;
-        const mWa = state.orderSearchWhatsapp.trim()
-          ? o.customerWhatsapp.replace(/\D/g, '').includes(state.orderSearchWhatsapp.replace(/\D/g, ''))
-          : true;
-        return mNum && mWa;
-      });
+      const normalizeWa = (val = '') => {
+  const digits = String(val).replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.startsWith('0') ? '62' + digits.slice(1) : digits;
+};
+const inputNum = (state.orderSearchNumber || '').trim().toUpperCase();
+const inputWa = normalizeWa(state.orderSearchWhatsapp);
+const matched = (inputNum && inputWa)
+  ? state.orders.filter(o =>
+      String(o.orderNumber || '').trim().toUpperCase() === inputNum &&
+      normalizeWa(o.customerWhatsapp) === inputWa
+    )
+  : [];
 
       return `
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -2686,12 +2690,23 @@
                             <span>Sisa waktu: <strong class="price-display" data-countdown-deadline="${getOrderPaymentDeadline(o)}">${formatRemainingCountdown(getOrderPaymentDeadline(o) - Date.now())}</strong></span>
                           </span>
                         </div>
-                      ` : ''}
-                      <a href="https://wa.me/${escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin konfirmasi pesanan *${o.orderNumber}* atas nama *${o.customerName}*.`)}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#d5e3d6] hover:bg-[#e6efe6] text-[#2d5a3c] text-xs font-semibold ml-auto">
-                        <i data-lucide="phone" class="w-3.5 h-3.5"></i>
-                        <span>Hubungi Admin WhatsApp</span>
-                      </a>
-                    </div>
+                        ` : ''}
+                        ${o.status === 'Paid' ? (() => {
+                          const buyerWa = normalizeWa(o.customerWhatsapp || o.customerwhatsapp || '');
+                          const itemNames = (o.items || []).map(it => it.productName).filter(Boolean).join(', ');
+                          const itemSuffix = itemNames ? ' (' + itemNames + ')' : '';
+                          const msg = encodeURIComponent(
+                            `Halo ${o.customerName || 'Kak'}, pembayaran pesanan ${o.orderNumber}${itemSuffix} sudah berhasil dikonfirmasi. Terima kasih telah berbelanja di CIFCUFS STORE!`
+                          );
+                          return buyerWa
+                            ? `<a href="[https://wa.me/$](https://wa.me/$){buyerWa}?text=${msg}" target="_blank" rel="noopener noreferrer" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-2 transition"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i><span>Chat Pembeli via WhatsApp</span></a>`
+                            : '';
+                        })() : ''}
+                        <a href="[https://wa.me/$](https://wa.me/$){escapeHtml(waClean)}?text=${encodeURIComponent(`Halo Admin CIFCUFS STORE, saya ingin menanyakan pesanan ${o.orderNumber}`)}" target="_blank" rel="noopener noreferrer" class="px-4 py-2.5 rounded-xl bg-[#171322] border border-[#7138D4]/40 hover:border-[#873BFA] text-white text-xs font-semibold inline-flex items-center gap-2 transition">
+                          <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                          <span>Hubungi Admin WhatsApp</span>
+                        </a>
+                      </div>
                   </div>
                 `;
               }).join('')}
