@@ -1088,14 +1088,14 @@
     // 3. HELPER FORMAT, FEE LAYANAN Rp100, TIMESTAMP WIB & LOGIKA HARGA
     // =========================================================================
     function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
-      return String(str)
-        .replace(/&/g, '\u0026amp;')
-        .replace(/</g, '\u0026lt;')
-        .replace(/>/g, '\u0026gt;')
-        .replace(/"/g, '\u0026quot;')
-        .replace(/'/g, '\u0026#39;');
-    }
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, ''');
+}
 
     function formatRupiah(amount) {
       if (amount === null || amount === undefined || isNaN(amount) || Number(amount) <= 0) {
@@ -3012,7 +3012,25 @@
       navigateTo('home');
       showToast('Anda telah keluar dari Admin Dashboard.');
     }
+function initAdminAuthSync() {
+  if (!window.firebase || !firebase.auth) return;
 
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      state.adminAuth.isAuthenticated = true;
+      state.adminAuth.email = user.email || state.adminAuth.email || '';
+    } else {
+      state.adminAuth.isAuthenticated = false;
+      state.adminAuth.email = '';
+    }
+
+    saveToStorage(STORAGE_KEYS.ADMIN_AUTH, state.adminAuth);
+
+    if (state.activePage === 'admin') {
+      renderApp();
+    }
+  });
+}
     // =========================================================================
     // 11. ADMIN DASHBOARD (14 MENU LENGKAP)
     // =========================================================================
@@ -4318,7 +4336,9 @@ service cloud.firestore {
        .slice(0, MAX_HERO_BANNERS);
 
      renderPublicHeroSlider();
-     renderAdminBannerManager();
+    if (state.activePage === 'admin' && state.activeAdminMenu === 'website-settings') {
+      renderAdminBannerManager();
+    }
    }, (error) => {
      console.error('Gagal memuat data Hero Banner:', error);
    });
@@ -4342,15 +4362,15 @@ service cloud.firestore {
    }
 
    track.innerHTML = heroBannersState.map((banner, idx) => `
-     <div class="w-full h-full flex-shrink-0 relative bg-[#090810]">
-       <img 
-         src="${banner.imageUrl}" 
-         alt="${escapeHtmlSafe(banner.altText || 'CIFCUFS STORE Banner ' + (idx + 1))}" 
-         class="w-full h-full object-cover object-center select-none"
-         loading="${idx === 0 ? 'eager' : 'lazy'}"
-       >
-     </div>
-   `).join('');
+  <div class="hero-slide-item relative bg-[#090810] aspect-[16/7] sm:aspect-[21/9]">
+    <img 
+      src="${banner.imageUrl}" 
+      alt="${escapeHtmlSafe(banner.altText || 'CIFCUFS STORE Banner ' + (idx + 1))}" 
+      class="w-full h-full object-cover object-center select-none"
+      loading="${idx === 0 ? 'eager' : 'lazy'}"
+    >
+  </div>
+`).join('');
 
    if (dotsContainer) {
      if (heroBannersState.length > 1) {
@@ -4436,7 +4456,7 @@ service cloud.firestore {
  }
 
  // Kompres gambar otomatis agar tajam, ringan, dan 100% gratis di Firestore
-function compressBannerToDataUrl(file, maxWidth = 1440, quality = 0.82) {
+function compressBannerToDataUrl(file, maxWidth = 1120, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -4641,15 +4661,8 @@ async function deleteHeroBanner(bannerId) {
   }
 }
  function escapeHtmlSafe(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '\u0026amp;')
-        .replace(/</g, '\u0026lt;')
-        .replace(/>/g, '\u0026gt;')
-        .replace(/"/g, '\u0026quot;')
-        .replace(/'/g, '\u0026#39;');
-    }
-
+  return escapeHtml(str);
+}
     initHeroBannerSync();
   </script>
 </body>
