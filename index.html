@@ -1078,6 +1078,66 @@ function saveOrderToDB(order) {
       return { subtotalAmount, serviceFee, totalAmount };
     }
 
+    function getMonthlyOrderHistory(orders = []) {
+      const monthMap = new Map();
+      const paidStatuses = ['Paid', 'In Progress', 'Revision', 'Completed'];
+      const processingStatuses = ['In Progress', 'Revision'];
+
+      (orders || []).forEach((order) => {
+        const refDateRaw = order.serverPaidAt || order.paidAt || order.serverCreatedAt || order.createdAt;
+        const dateObj = typeof refDateRaw?.toDate === 'function' ? refDateRaw.toDate() : new Date(refDateRaw);
+        const isValidDate = !isNaN(dateObj.getTime());
+
+        const yearPart = isValidDate
+          ? new Intl.DateTimeFormat('en-CA', { year: 'numeric', timeZone: 'Asia/Jakarta' }).format(dateObj)
+          : '0000';
+        const monthPart = isValidDate
+          ? new Intl.DateTimeFormat('en-CA', { month: '2-digit', timeZone: 'Asia/Jakarta' }).format(dateObj)
+          : '00';
+        const periodKey = `${yearPart}-${monthPart}`;
+
+        const label = isValidDate
+          ? new Intl.DateTimeFormat('id-ID', {
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'Asia/Jakarta'
+            }).format(dateObj)
+          : 'Periode Tidak Diketahui';
+
+        if (!monthMap.has(periodKey)) {
+          monthMap.set(periodKey, {
+            periodKey,
+            label,
+            sortValue: isValidDate ? Number(`${yearPart}${monthPart}`) : 0,
+            revenue: 0,
+            totalOrders: 0,
+            paidOrders: 0,
+            processingOrders: 0,
+            completedOrders: 0
+          });
+        }
+
+        const bucket = monthMap.get(periodKey);
+        const fin = getOrderFinancialBreakdown(order);
+        bucket.totalOrders += 1;
+
+        if (paidStatuses.includes(order.status)) {
+          bucket.revenue += fin.totalAmount;
+        }
+        if (order.status === 'Paid') {
+          bucket.paidOrders += 1;
+        }
+        if (processingStatuses.includes(order.status)) {
+          bucket.processingOrders += 1;
+        }
+        if (order.status === 'Completed') {
+          bucket.completedOrders += 1;
+        }
+      });
+
+      return Array.from(monthMap.values()).sort((a, b) => b.sortValue - a.sortValue);
+    }
+
     function formatOrderDateID(isoInput) {
       if (!isoInput) return '-';
       const dateObj = typeof isoInput?.toDate === 'function' ? isoInput.toDate() : new Date(isoInput);
@@ -3061,6 +3121,52 @@ function saveOrderToDB(order) {
               </div>
             `}
           </div>
+          ${(() => {
+            const monthlyHistory = getMonthlyOrderHistory(state.orders);
+            return `
+              <div class="bg-[#111018] border border-[#7138D4]/40 rounded-3xl p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-[#B88AFF]">Otomatis per Bulan (WIB)</span>
+                    <h3 class="font-bold text-base text-white mt-0.5">Riwayat Rekap Bulanan</h3>
+                  </div>
+                  <span class="text-xs text-[#B8B5C5]">Berlanjut otomatis ke bulan & tahun berikutnya</span>
+                </div>
+
+                ${monthlyHistory.length === 0
+                  ? `<p class="text-xs text-[#B8B5C5] py-6 text-center">Belum ada riwayat pesanan bulanan.</p>`
+                  : `
+                    <div class="overflow-x-auto">
+                      <table class="w-full text-left text-xs">
+                        <thead>
+                          <tr class="border-b border-white/10 text-[#B8B5C5]">
+                            <th class="py-2.5">Bulan</th>
+                            <th class="py-2.5">Pendapatan</th>
+                            <th class="py-2.5">Total Pesanan</th>
+                            <th class="py-2.5">Pesanan Dibayar</th>
+                            <th class="py-2.5">Diproses</th>
+                            <th class="py-2.5">Pesanan Selesai</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10 text-white">
+                          ${monthlyHistory.map((m) => `
+                            <tr class="hover:bg-[#171322]">
+                              <td class="py-3 font-bold text-[#B88AFF]">${escapeHtml(m.label)}</td>
+                              <td class="price-display py-3 font-bold text-emerald-300">${m.revenue > 0 ? formatRupiah(m.revenue) : 'Rp 0'}</td>
+                              <td class="price-display py-3 font-semibold">${m.totalOrders}</td>
+                              <td class="price-display py-3 font-semibold">${m.paidOrders}</td>
+                              <td class="price-display py-3 font-semibold">${m.processingOrders}</td>
+                              <td class="price-display py-3 font-semibold">${m.completedOrders}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  `
+                }
+              </div>
+            `;
+          })()}
         `;
       }
 
