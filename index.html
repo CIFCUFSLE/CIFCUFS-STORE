@@ -1089,6 +1089,20 @@
       const hour = parts.find(p => p.type === 'hour')?.value || '00';
       const minute = parts.find(p => p.type === 'minute')?.value || '00';
       return `${hour}:${minute} WIB`;
+
+    function normalizeWa(val = '') {
+      const digits = String(val).replace(/\D/g, '');
+      if (!digits) return '';
+      return digits.startsWith('0') ? '62' + digits.slice(1) : digits;
+    }
+
+    function getBuyerWhatsAppUrl(order, customText = '') {
+      const buyerWa = normalizeWa(order?.customerWhatsapp || order?.customerwhatsapp || '');
+      if (!buyerWa) return '';
+      const itemNames = (order?.items || []).map(it => it.productName).filter(Boolean).join(', ');
+      const itemSuffix = itemNames ? ' (' + itemNames + ')' : '';
+      const defaultMsg = 'Halo ' + (order?.customerName || 'Kak') + ', pembayaran pesanan ' + (order?.orderNumber || '') + itemSuffix + ' sudah kami terima di CIFCUFS STORE.';
+      return 'https://wa.me/' + buyerWa + '?text=' + encodeURIComponent(customText || defaultMsg);
     }
 
     function isOrderPaymentVerified(order) {
@@ -3264,8 +3278,16 @@ const matched = (inputNum && inputWa)
                             </select>
                           </td>
                           <td class="py-3.5 text-right">
-                            <button onclick="openOrderInspectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-semibold">Lihat Detail</button>
-                          </td>
+  <div class="inline-flex items-center justify-end gap-1.5 flex-wrap">
+    ${getBuyerWhatsAppUrl(o) ? `
+      <a href="${escapeHtml(getBuyerWhatsAppUrl(o))}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold inline-flex items-center gap-1 whitespace-nowrap transition">
+        <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+        <span>Hubungi Pembeli</span>
+      </a>
+    ` : ''}
+    <button onclick="openOrderInspectModal('${o.id}')" class="px-3 py-1.5 rounded-lg bg-[#e6efe6] text-[#2d5a3c] font-semibold whitespace-nowrap">Lihat Detail</button>
+  </div>
+</td>
                         </tr>
                       `;
                     }).join('')}
